@@ -1,0 +1,481 @@
+.delivery-page {
+    min-height: calc(100vh - 60px);
+    padding: 1.5rem;
+    background: #f8fafc;
+}
+
+.delivery-wrapper {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.delivery-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.delivery-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.back-button {
+    padding: 0.5rem 1rem;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.back-button:hover {
+    background: #f1f5f9;
+    color: #334155;
+    text-decoration: none;
+}
+
+.delivery-container {
+    display: flex;
+    height: calc(100vh - 140px);
+    overflow: hidden;
+}
+
+.delivery-control-panel {
+    width: 10%;
+    border-left: 1px solid #e2e8f0;
+    padding: 1.5rem;
+    background: #f8fafc;
+}
+
+.control-panel-content {
+    position: sticky;
+    top: 1.5rem;
+}
+
+.delivery-stats {
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1rem 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.stat-item {
+    margin-bottom: 0.75rem;
+}
+
+.stat-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-item label {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.stat-item h4 {
+    color: #334155;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.stat-box {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.stat-box label {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-box h4 {
+    color: #334155;
+    margin: 0;
+}
+
+.delivery-content {
+    flex: 1;
+    padding: 1.5rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Add this to handle flex item overflow */
+}
+
+.orders-section {
+    flex: 1;
+    overflow: auto; /* Allow both vertical and horizontal scroll */
+    padding: 1rem;
+}
+
+.details-section {
+    border-top: 1px solid #e2e8f0;
+    padding: 1rem;
+    background: #f8fafc;
+}
+
+/* Table Container */
+.table-responsive {
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    height: 100%;
+    position: relative;
+}
+
+/* Table Styles */
+.table {
+    margin-bottom: 0;
+    width: 100%;
+    table-layout: fixed;
+}
+
+/* Fixed Header */
+.table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #f8fafc;
+}
+
+/* Column Widths */
+.table th:nth-child(1), 
+.table td:nth-child(1) { /* Checkbox column */
+    width: 40px;
+}
+
+.table th:nth-child(2), 
+.table td:nth-child(2) { /* Sale number */
+    width: 100px;
+}
+
+.table th:nth-child(3), 
+.table td:nth-child(3) { /* Delivery worker */
+    width: 120px;
+}
+
+.table th:nth-child(4), 
+.table td:nth-child(4) { /* Customer name */
+    width: 150px;
+}
+
+.table th:nth-child(5), 
+.table td:nth-child(5) { /* Phone */
+    width: 120px;
+}
+
+.table th:nth-child(6), 
+.table td:nth-child(6) { /* Amount */
+    width: 100px;
+}
+
+.table th:nth-child(7), 
+.table td:nth-child(7) { /* Delivery fee */
+    width: 100px;
+}
+
+.table th:nth-child(8), 
+.table td:nth-child(8) { /* Payment */
+    width: 80px;
+}
+
+.table th:nth-child(9), 
+.table td:nth-child(9) { /* Date */
+    width: 150px;
+}
+
+.table th:nth-child(10), 
+.table td:nth-child(10) { /* Actions */
+    width: 60px;
+}
+
+/* Cell content handling */
+.table th,
+.table td {
+    padding: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Shadow effect for fixed header */
+.table thead::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 5px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 100%);
+}
+
+.expand-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    transition: color 0.2s;
+}
+
+.expand-btn:hover {
+    color: #334155;
+}
+
+.order-details-row {
+    background-color: #f8fafc;
+}
+
+.order-details-content {
+    padding: 1rem;
+    font-size: 0.9rem;
+}
+
+/* Make inline details scrollable with a max height so large orders don't expand the table too much */
+.order-details-content {
+    max-height: 300px; /* adjust as needed */
+    overflow: auto;
+}
+
+.compact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.customer-info {
+    display: flex;
+    gap: 2rem;
+    color: #64748b;
+}
+
+.items-table {
+    margin-top: 0.5rem;
+}
+
+.items-table .table {
+    margin-bottom: 0;
+}
+
+.items-table td {
+    padding: 0.35rem 0.75rem;
+}
+
+.order-details-row {
+    background: #f8fafc;
+}
+
+.order-details-content {
+    padding: 1rem;
+}
+
+.compact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.customer-info {
+    display: flex;
+    gap: 2rem;
+}
+
+.items-table {
+    margin-top: 0.5rem;
+}
+
+#noOrdersMessage {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Modern Form Controls */
+.form-control {
+    direction: ltr;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    background-color: #ffffff;
+    color: #1e293b;
+    width: 100%;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1rem;
+}
+
+.form-control:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    outline: none;
+}
+
+.form-control:hover {
+    border-color: #94a3b8;
+}
+
+/* Modern Buttons */
+.btn {
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-info {
+    background-color: #0ea5e9;
+    color: #ffffff;
+}
+
+.btn-info:hover {
+    background-color: #0284c7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-info:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: #ffffff;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-success:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+#showDeliveryFeesBtn {
+    background-color: #3b82f6;
+}
+
+#showDeliveryFeesBtn:hover {
+    background-color: #2563eb;
+}
+
+/* Button with icon */
+.btn i {
+    font-size: 1rem;
+}
+
+/* Disabled state */
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Control panel specific styles */
+.control-panel-content .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.control-panel-content .btn {
+    width: 100%;
+}
+
+/* Loading state */
+.btn .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Select wrapper for better styling */
+.select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.select-wrapper::after {
+    content: '';
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 20px;
+    background-color: #e2e8f0;
+}
+
+/* Alert styles */
+.alert {
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    color: #64748b;
+    font-size: 1.25rem;
+}
+
+/* Clickable rows */
+.order-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.order-row:hover {
+    background-color: #f1f5f9;
+}
+
+/* Success highlight animation */
+@keyframes highlightSuccess {
+    0% { background-color: #dcfce7; }
+    100% { background-color: transparent; }
+}
+
+.assignment-success {
+    animation: highlightSuccess 2s ease-out;
+}
+
+/* Prevent text selection on row click */
+.order-row td {
+    user-select: none;
+}

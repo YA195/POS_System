@@ -1,0 +1,115 @@
+/* Cash Boxes Management Styles */
+
+.cash-boxes-container {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-top: 15px;
+}
+
+.cash-boxes-table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+.cash-boxes-table th,
+.cash-boxes-table td {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 1px solid #ddd;
+}
+
+.cash-boxes-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+.cash-boxes-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.cash-boxes-table td button {
+    margin: 0 5px;
+}
+
+#cashBoxModal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    overflow: auto;
+}
+
+#cashBoxModal .modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 400px;
+    border-radius: 8px;
+    direction: rtl;
+}
+
+#cashBoxModal h3 {
+    margin-top: 0;
+    color: #334155;
+    margin-bottom: 1.5rem;
+}
+
+#cashBoxModal .form-group {
+    margin-bottom: 1.5rem;
+}
+
+#cashBoxModal .form-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+    color: #475569;
+}
+
+#cashBoxModal .form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+#cashBoxModal .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+}
+
+#cashBoxModal .btn-cancel {
+    background: #6b7280;
+    color: white;
+}
+
+#cashBoxModal .btn-cancel:hover {
+    background: #4b5563;
+}
+
+@media (max-width: 768px) {
+    .cash-boxes-table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .cash-boxes-table th,
+    .cash-boxes-table td {
+        min-width: 120px;
+    }
+
+    .cash-boxes-container {
+        padding: 10px;
+    }
+}

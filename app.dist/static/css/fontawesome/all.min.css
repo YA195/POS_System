@@ -1,0 +1,106 @@
+@font-face {
+    font-family: "Font Awesome 5 Free";
+    font-style: normal;
+    font-weight: 900;
+    font-display: block;
+    src: url("../../fonts/fontawesome/fa-solid-900.woff2") format("woff2"),
+         url("../../fonts/fontawesome/fa-solid-900.woff") format("woff"),
+         url("../../fonts/fontawesome/fa-solid-900.ttf") format("truetype");
+}
+
+.fas {
+    font-family: "Font Awesome 5 Free" !important;
+    font-weight: 900;
+    font-style: normal;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    line-height: 1;
+}
+
+.fa-chart-line:before {
+    content: "\f201";
+}
+
+
+
+.fa-wallet:before {
+    content: "\f555";
+}
+.fa-credit-card:before {
+    content: "\f09d";
+}
+
+.fa-moped:before {
+    content: "\f0d1";
+}
+.fa-arrow-rotate-left:before{
+    content: "\f0e2";
+}
+
+.fa-percentage:before {
+    content:"\f541" ;
+}
+.fa-file-invoice-dollar:before {
+    content:"\f571" ;
+}
+.fa-receipt:before {
+    content:"\f543" ;
+}
+.fa-chevron-down:before {
+    content:"\f078" ;
+}
+.fa-money-bill-wave:before {
+    content:"\f53a" ;
+}
+.fa-chevron-up:before {
+    content:"\f077" ;
+}
+
+.fa-arrow-left:before {
+    content:"\f060" ;
+}
+.fa-arrow-right:before {
+    content:"\f061" ;
+}
+.fa-cash-register:before {
+    content:"\f788" ;
+}
+
+/* Add save icon */
+.fa-save:before {
+    content: "\f0c7";
+}
+/* Add trash icon */
+.fa-trash:before {
+    content: "\f1f8";
+}
+.fa-trash-alt:before {
+    content: "\f2ed";
+}
+
+/* Make sure edit icon is included */
+.fa-edit:before {
+    content: "\f044";
+}
+/* Fix existing icons */
+.fa-store-alt:before { content: "\f54f"; }
+.fa-user:before { content: "\f007"; }
+.fa-lock:before { content: "\f023"; }
+.fa-eye:before { content: "\f06e"; }
+.fa-eye-slash:before { content: "\f070"; }
+.fa-sign-in-alt:before { content: "\f2f6"; }
+.fa-sign-out-alt:before { content: "\f2f5"; }
+.fa-home:before { content: "\f015"; }
+.fa-shopping-cart:before { content: "\f07a"; }
+.fa-box:before { content: "\f466"; }
+.fa-user-tie:before { content: "\f508"; }
+.fa-tags:before { content: "\f02c"; }
+.fa-building:before { content: "\f1ad"; }
+.fa-chart-bar:before { content: "\f080"; }
+.fa-cog:before { content: "\f013"; }
+.fa-plus:before { content: "\f067"; }
+.fa-file-invoice:before { content: "\f570"; }

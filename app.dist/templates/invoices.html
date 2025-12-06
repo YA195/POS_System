@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}الفواتير - Supermarket POS{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/invoices.css') }}">
+
+<div class="invoices-container">
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <div class="date-filter">
+            <input type="date" id="startDate" class="date-input">
+            <span>إلى</span>
+            <input type="date" id="endDate" class="date-input">
+        </div>
+        
+        <div class="entity-filter">
+            <select id="traderFilter" class="select-input">
+                <option value="">كل التجار</option>
+                {% for trader in traders %}
+                <option value="{{ trader.id }}">{{ trader.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="companyFilter" class="select-input">
+                <option value="">كل الشركات</option>
+                {% for company in companies %}
+                <option value="{{ company.id }}">{{ company.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="payment-filter">
+            <select id="paymentStatus" class="select-input">
+                <option value="">كل الحالات</option>
+                <option value="paid">مدفوع بالكامل</option>
+                <option value="partial">مدفوع جزئياً</option>
+                <option value="unpaid">غير مدفوع</option>
+            </select>
+        </div>
+        
+        <button onclick="applyFilters()" class="btn btn-primary">
+            <i class="fas fa-filter"></i> تطبيق الفلتر
+        </button>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-section">
+        <div class="summary-card">
+            <h3>إجمالي الفواتير</h3>
+            <p id="totalInvoices">0.00</p>
+        </div>
+        <div class="summary-card">
+            <h3>المدفوع</h3>
+            <p id="totalPaid">0.00</p>
+        </div>
+        <div class="summary-card">
+            <h3>المتبقي</h3>
+            <p id="totalRemaining">0.00</p>
+        </div>
+    </div>
+
+    <!-- Invoices List -->
+    <div class="invoices-list">
+        <table id="invoicesTable">
+            <thead>
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ</th>
+                    <th>المورد/الشركة</th>
+                    <th>الإجمالي</th>
+                    <th>المدفوع</th>
+                    <th>المتبقي</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <!-- Add before the closing </div> of invoices-container -->
+
+<!-- View Invoice Modal -->
+<div id="viewInvoiceModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>تفاصيل الفاتورة #<span id="viewInvoiceId"></span></h3>
+            <button class="close-btn" onclick="closeViewModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="invoice-info">
+                <div class="info-row">
+                    <span>التاريخ:</span>
+                    <span id="viewInvoiceDate"></span>
+                </div>
+                <div class="info-row">
+                    <span>المورد/الشركة:</span>
+                    <span id="viewInvoiceEntity"></span>
+                </div>
+                <div class="info-row">
+                    <span>حالة الدفع:</span>
+                    <span id="viewInvoiceStatus"></span>
+                </div>
+            </div>
+            
+            <div class="invoice-items">
+                <h4>الأصناف</h4>
+                <table id="invoiceItemsTable">
+                    <thead>
+                        <tr>
+                            <th>الصنف</th>
+                            <th>الكمية</th>
+                            <th>سعر الشراء</th>
+                            <th>سعر البيع</th>
+                            <th>الإجمالي</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <div class="invoice-summary">
+                <div class="summary-row">
+                    <span>الإجمالي:</span>
+                    <span id="viewInvoiceTotal"></span>
+                </div>
+                <div class="summary-row">
+                    <span>الخصم:</span>
+                    <span id="viewInvoiceDiscount"></span>
+                </div>
+                <div class="summary-row">
+                    <span>المدفوع:</span>
+                    <span id="viewInvoicePaid"></span>
+                </div>
+                <div class="summary-row">
+                    <span>المتبقي:</span>
+                    <span id="viewInvoiceRemaining"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="modal">
+    <div class="modal-content">
+        <h3>تسديد دفعة</h3>
+        <form id="paymentForm">
+            <input type="hidden" id="invoiceId">
+            <div class="form-group">
+                <label>المبلغ المتبقي:</label>
+                <input type="number" id="remainingAmount" readonly>
+            </div>
+            <div class="form-group">
+                <label>المبلغ المدفوع:</label>
+                <input type="number" id="paymentAmount" required step="0.01">
+            </div>
+            <div class="form-group">
+                <label>ملاحظات:</label>
+                <input type="text" id="paymentNotes">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success">تأكيد الدفع</button>
+                <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadInvoices();
+        // Set default dates to current month
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    });
+    
+    async function loadInvoices(filters = {}) {
+        try {
+            const response = await fetch('/get_invoices?' + new URLSearchParams(filters));
+            const data = await response.json();
+            
+            updateSummary(data.summary);
+            renderInvoices(data.invoices);
+        } catch (error) {
+            console.error('Error loading invoices:', error);
+        }
+    }
+    
+    function updateSummary(summary) {
+        document.getElementById('totalInvoices').textContent = summary.total.toFixed(2);
+        document.getElementById('totalPaid').textContent = summary.paid.toFixed(2);
+        document.getElementById('totalRemaining').textContent = summary.remaining.toFixed(2);
+    }
+    
+    function renderInvoices(invoices) {
+        const tbody = document.getElementById('invoicesTable').querySelector('tbody');
+        tbody.innerHTML = '';
+        
+        invoices.forEach(invoice => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${invoice.id}</td>
+                <td>${new Date(invoice.invoice_date).toLocaleString('ar-EG')}</td>
+                <td>${invoice.entity_name}</td>
+                <td>${invoice.total_amount.toFixed(2)}</td>
+                <td>${invoice.paid_amount.toFixed(2)}</td>
+                <td>${invoice.remaining_amount.toFixed(2)}</td>
+                <td>${getStatusBadge(invoice.payment_status)}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="viewInvoiceDetails(${invoice.id})">
+                        <i class="fas fa-eye"></i> عرض
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    
+    function getStatusBadge(status) {
+        const badges = {
+            'paid': '<span class="badge badge-success">مدفوع</span>',
+            'partial': '<span class="badge badge-warning">مدفوع جزئياً</span>',
+            'unpaid': '<span class="badge badge-danger">غير مدفوع</span>'
+        };
+        return badges[status] || status;
+    }
+    
+    function applyFilters() {
+        const filters = {
+            start_date: document.getElementById('startDate').value,
+            end_date: document.getElementById('endDate').value,
+            trader_id: document.getElementById('traderFilter').value,
+            company_id: document.getElementById('companyFilter').value,
+            payment_status: document.getElementById('paymentStatus').value
+        };
+        loadInvoices(filters);
+    }
+    
+    function showPaymentModal(invoiceId, remainingAmount) {
+        document.getElementById('invoiceId').value = invoiceId;
+        document.getElementById('remainingAmount').value = remainingAmount.toFixed(2);
+        document.getElementById('paymentAmount').value = '';
+        document.getElementById('paymentAmount').max = remainingAmount;
+        document.getElementById('paymentModal').style.display = 'block';
+    }
+    
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+    }
+    
+    document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const paymentData = {
+            invoice_id: document.getElementById('invoiceId').value,
+            amount: parseFloat(document.getElementById('paymentAmount').value),
+            notes: document.getElementById('paymentNotes').value
+        };
+        
+        try {
+            const response = await fetch('/process_payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(paymentData)
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                closePaymentModal();
+                loadInvoices();
+            } else {
+                alert(result.error || 'حدث خطأ أثناء تسجيل الدفعة');
+            }
+        } catch (error) {
+            console.error('Error processing payment:', error);
+            alert('حدث خطأ أثناء تسجيل الدفعة');
+        }
+    });
+    
+    // Add this inside your existing script tag
+async function viewInvoiceDetails(invoiceId) {
+    try {
+        const response = await fetch(`/get_invoice_details/${invoiceId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Update modal with invoice details
+        document.getElementById('viewInvoiceId').textContent = data.id;
+        document.getElementById('viewInvoiceDate').textContent = new Date(data.invoice_date).toLocaleString('ar-EG');
+        document.getElementById('viewInvoiceEntity').textContent = data.entity_name;
+        document.getElementById('viewInvoiceStatus').innerHTML = getStatusBadge(data.payment_status);
+        
+        // Update financial details
+        document.getElementById('viewInvoiceTotal').textContent = `${data.total_amount.toFixed(2)} ج.م`;
+        document.getElementById('viewInvoiceDiscount').textContent = `${data.discount_amount.toFixed(2)} ج.م`;
+        document.getElementById('viewInvoicePaid').textContent = `${data.paid_amount.toFixed(2)} ج.م`;
+        document.getElementById('viewInvoiceRemaining').textContent = `${data.remaining_amount.toFixed(2)} ج.м`;
+        
+        // Render items table
+        const tbody = document.getElementById('invoiceItemsTable').querySelector('tbody');
+        tbody.innerHTML = '';
+        
+        if (data.items && data.items.length > 0) {
+            data.items.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.item_name}</td>
+                    <td>${item.quantity} (#${item.quantity_type})</td>
+                    <td>${item.buy_price.toFixed(2)} ج.م</td>
+                    <td>${item.sell_price.toFixed(2)} ج.م</td>
+                    <td>${item.total_price.toFixed(2)} ج.م</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">لا توجد أصناف</td></tr>';
+        }
+        
+        // Show modal
+        document.getElementById('viewInvoiceModal').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading invoice details:', error);
+        alert('حدث خطأ أثناء تحميل تفاصيل الفاتورة');
+    }
+}
+function closeViewModal() {
+    document.getElementById('viewInvoiceModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const viewModal = document.getElementById('viewInvoiceModal');
+    const paymentModal = document.getElementById('paymentModal');
+    if (event.target === viewModal) {
+        viewModal.style.display = 'none';
+    }
+    if (event.target === paymentModal) {
+        paymentModal.style.display = 'none';
+    }
+}
+
+
+</script>
+{% endblock %}

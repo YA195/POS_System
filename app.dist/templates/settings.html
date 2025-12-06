@@ -1,0 +1,781 @@
+{% extends "base.html" %}
+
+{% block title %}إعدادات النظام{% endblock %}
+
+{% block head %}
+<!-- Add these scripts before your custom code -->
+<script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cash_boxes.css') }}">
+
+<div class="settings-container">
+    {% set perms = session.get('permissions', []) %}
+    <div class="settings-section">
+        <h2>إعدادات الطابعة</h2>
+        <div class="form-group">
+            <label for="printerName">اختر الطابعة:</label>
+            <select id="printerName" class="form-control">
+                <!-- Printers will be loaded here -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="testPrint">اختبار الطباعة:</label>
+            <button id="testPrint" class="btn btn-primary">
+                <i class="fas fa-print"></i>
+                طباعة اختبار
+            </button>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>إعدادات المتجر</h2>
+        <div class="form-group">
+            <label for="storeName">اسم المتجر:</label>
+            <input type="text" id="storeName" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="storePhone">رقم الهاتف:</label>
+            <input type="tel" id="storePhone" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="storeAddress">العنوان:</label>
+            <textarea id="storeAddress" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="receiptFooter">تذييل الفاتورة:</label>
+            <textarea id="receiptFooter" class="form-control" rows="2"></textarea>
+        </div>
+    </div>
+
+    <div class="settings-actions">
+        <button id="saveSettings" class="btn btn-success">
+            <i class="fas fa-save"></i>
+            حفظ الإعدادات
+        </button>
+    </div>
+    
+
+    {% if 'manage_users' in perms %}
+
+    <div class="settings-section">
+        <h2>إدارة المستخدمين</h2>
+        <div class="users-table-container">
+            <button class="btn btn-primary" onclick="showAddUserModal()">
+                <i class="fas fa-user-plus"></i>
+                إضافة مستخدم
+            </button>
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>اسم المستخدم</th>
+                        <th>كلمة المرور</th>
+                        <th>الصلاحيات</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- Users will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <h3>إضافة مستخدم جديد</h3>
+            <div class="form-group">
+                <label for="newUsername">اسم المستخدم:</label>
+                <input type="text" id="newUsername" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">كلمة المرور:</label>
+                <input type="text" id="newPassword" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>الصلاحيات:</label>
+                <div class="permissions-checkboxes">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="selectAll" class="permission-checkbox-all"> تحديد الكل
+                    </label>
+                    <div class="permissions-list">
+                        <label><input type="checkbox" class="permission-checkbox" value="home"> الرئيسية</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="sales"> المبيعات</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="items"> المنتجات</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="categories"> الأقسام</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="companies"> الشركات</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="reports"> التقارير</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="settings"> الإعدادات</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="invoice"> اضافة الفواتير</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="traders"> التجار</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="manage_users"> تحكم في المستخدمين</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="closing"> الاقفال</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="invoices"> الفواتير</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="admin"> PR</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="shifts"> shifts</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="f"> shifts</label>
+
+                        <label><input type="checkbox" class="permission-checkbox" value="inventory_audit"> جرد</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="approve_inventory_audit"> اعتماد الجرد</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="previous_audits"> الجرد السابقة</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="barcode_generator"> مولد الباركود</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="item_movement"> حركة الأصناف</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="supplier_balances"> ارصدة الموردين</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="cash_boxes_report"> الصناديق</label>
+                        <label><input type="checkbox" class="permission-checkbox" value="employees"> المناديب</label>
+
+
+
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-success" onclick="saveNewUser()">حفظ</button>
+                <button class="btn btn-secondary" onclick="closeAddUserModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if 'settings' in perms or 'admin' in perms or 'delivery_workers' in perms %}
+    <div class="settings-section">
+    <h2>إدارة عمال التوصيل</h2>
+    <div class="delivery-workers-container">
+        <button class="btn btn-primary" onclick="showAddWorkerModal()">
+            <i class="fas fa-plus"></i>
+            إضافة عامل توصيل
+        </button>
+        <table class="workers-table">
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>رقم الهاتف</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="workersTable">
+                <!-- Workers will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+    </div>
+    {% endif %}
+    
+    {% if 'settings' in perms or 'admin' in perms %}
+    <div class="settings-section">
+        <h2>إدارة الصناديق</h2>
+        <div class="cash-boxes-container">
+            <button class="btn btn-primary" onclick="showAddCashBoxModal()">
+                <i class="fas fa-plus"></i>
+                إضافة صندوق جديد
+            </button>
+            <table class="cash-boxes-table">
+                <thead>
+                    <tr>
+                        <th>اسم الصندوق</th>
+                        <th>النوع</th>
+                        <th>نشط</th>
+                    </tr>
+                </thead>
+                <tbody id="cashBoxesTable">
+                    <!-- Cash boxes will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Cash Box Modal -->
+<div class="modal" id="cashBoxModal">
+    <div class="modal-content">
+        <h3>إضافة صندوق جديد</h3>
+        <div class="form-group">
+            <label>اسم الصندوق</label>
+            <input type="text" id="cashBoxName" class="form-control" placeholder="مثال: بنك الأهلي، محفظة إلكترونية...">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-success" onclick="saveCashBox()">
+                <i class="fas fa-save"></i>
+                حفظ
+            </button>
+            <button class="btn btn-cancel" onclick="closeCashBoxModal()">
+                إلغاء
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Worker Modal -->
+<div class="modal fade" id="workerModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="workerModalTitle">إضافة عامل توصيل</h5>
+                <button type="button" class="close" onclick="closemodal()" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="workerForm">
+                    <input type="hidden" id="workerId">
+                    <div class="form-group">
+                        <label>الاسم</label>
+                        <input type="text" class="form-control" id="workerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهاتف</label>
+                        <input type="text" class="form-control" id="workerPhone" required>
+                    </div>
+                    <div class="form-group" id="statusGroup">
+                        <label>الحالة</label>
+                        <select class="form-control" id="workerStatus">
+                            <option value="active">نشط</option>
+                            <option value="inactive">غير نشط</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closemodal()">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="saveWorker()">حفظ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load available printers
+    loadDeliveryWorkers();
+    fetch('/get_printers')
+        .then(response => response.json())
+        .then(printers => {
+            const select = document.getElementById('printerName');
+            printers.forEach(printer => {
+                const option = document.createElement('option');
+                option.value = printer;
+                option.textContent = printer;
+                select.appendChild(option);
+            });
+        });
+
+    // Load current settings
+    fetch('/get_settings')
+        .then(response => response.json())
+        .then(settings => {
+            document.getElementById('storeName').value = settings.store_name || '';
+            document.getElementById('storePhone').value = settings.store_phone || '';
+            document.getElementById('storeAddress').value = settings.store_address || '';
+            document.getElementById('receiptFooter').value = settings.receipt_footer || '';
+            document.getElementById('printerName').value = settings.printer_name || '';
+        });
+
+    // Test Print Handler
+    document.getElementById('testPrint').addEventListener('click', function() {
+        const printer = document.getElementById('printerName').value;
+        fetch('/test_print', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ printer: printer })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('تم إرسال صفحة الاختبار للطابعة');
+            } else {
+                alert('حدث خطأ أثناء الطباعة');
+            }
+        });
+    });
+
+    // Save Settings Handler
+    document.getElementById('saveSettings').addEventListener('click', function() {
+        const settings = {
+            store_name: document.getElementById('storeName').value,
+            store_phone: document.getElementById('storePhone').value,
+            store_address: document.getElementById('storeAddress').value,
+            receipt_footer: document.getElementById('receiptFooter').value,
+            printer_name: document.getElementById('printerName').value
+        };
+
+        fetch('/save_settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('تم حفظ الإعدادات بنجاح');
+            } else {
+                alert('حدث خطأ أثناء حفظ الإعدادات');
+            }
+        });
+    });
+
+    // Select All functionality
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const permissionCheckboxes = document.querySelectorAll('.permission-checkbox');
+
+    selectAllCheckbox.addEventListener('change', function() {
+        permissionCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Update select all checkbox when individual permissions change
+    permissionCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(permissionCheckboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+        });
+    });
+});
+
+
+
+
+// Load users
+function loadUsers() {
+    fetch('/get_users')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(users => {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">لا يوجد مستخدمين</td></tr>';
+                return;
+            }
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${user.username || ''}</td>
+                    <td>${user.password || ''}</td>
+                    <td>${formatPermissions(user.permissions || '')}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="editUser(${user.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '<tr><td colspan="4">حدث خطأ في تحميل المستخدمين</td></tr>';
+        });
+}
+
+function formatPermissions(permissions) {
+    // Handle null or undefined
+    if (!permissions) return '';
+    
+    // Convert to string if it's not already
+    const permStr = String(permissions);
+    
+    return permStr.split(',').map(p => {
+        const perm = p.trim();  // Remove any whitespace
+        switch(perm) {
+            case 'home': return 'الرئيسية';
+            case 'sales': return 'المبيعات';
+            case 'items': return 'المنتجات';
+            case 'categories': return 'الأقسام';
+            case 'companies': return 'الشركات';
+            case 'reports': return 'التقارير';
+            case 'settings': return 'الإعدادات';
+                    case 'manage_users': return 'تحكم في المستخدمين';
+            case 'invoice': return 'اضافة الفواتير';
+            case 'traders': return 'التجار';
+            case 'closing': return 'الاقفال';
+            case 'invoices': return 'الفواتير';
+            case 'admin': return 'PR';
+            case 'shifts': return 'الورديات';
+            case 'supplier_balances': return 'ارصدة الموردين';
+            case 'cash_boxes_report': return 'الصناديق';
+            case 'inventory_audit': return 'جرد الأصناف';
+            case 'approve_inventory_audit': return 'اعتماد الجرد';
+            case 'previous_audits': return 'الجرد السابقة';
+            case 'employees': return 'المناديب';
+
+
+            default: return perm;
+        }
+    }).join(', ');
+}
+
+function showAddUserModal() {
+    document.getElementById('addUserModal').style.display = 'block';
+}
+
+function closeAddUserModal() {
+    document.getElementById('addUserModal').style.display = 'none';
+}
+
+function closemodal() {
+    document.getElementById('workerModal').style.display = 'none';
+}
+
+function saveNewUser() {
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    const permissions = Array.from(document.querySelectorAll('.permissions-checkboxes input:checked'))
+        .map(cb => cb.value)
+        .join(',');
+
+    fetch('/add_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, permissions })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeAddUserModal();
+            loadUsers();
+            alert('تم إضافة المستخدم بنجاح');
+        } else {
+            alert(data.error);
+        }
+    });
+}
+
+
+// Add after your existing JavaScript code
+
+function deleteUser(userId) {
+    if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
+        return;
+    }
+
+    fetch(`/delete_user/${userId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadUsers();
+            alert('تم حذف المستخدم بنجاح');
+        } else {
+            alert(data.error || 'حدث خطأ أثناء حذف المستخدم');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ أثناء حذف المستخدم');
+    });
+}
+
+function editUser(userId) {
+    // Get user data first
+    fetch(`/get_user/${userId}`)
+    .then(response => response.json())
+    .then(user => {
+        document.getElementById('addUserModal').style.display = 'block';
+        document.getElementById('newUsername').value = user.username;
+        document.getElementById('newPassword').value = user.password;
+        
+        // Clear all checkboxes first
+        document.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+        
+        // Check the user's permissions
+        const permissions = user.permissions.split(',');
+        permissions.forEach(permission => {
+            const checkbox = document.querySelector(`.permission-checkbox[value="${permission}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+        
+        // Update save button to handle edit
+        const saveButton = document.querySelector('.modal-actions .btn-success');
+        saveButton.onclick = () => updateUser(userId);
+    });
+}
+
+function updateUser(userId) {
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    const permissions = Array.from(document.querySelectorAll('.permission-checkbox:checked'))
+        .map(cb => cb.value)
+        .join(',');
+
+    fetch(`/update_user/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, permissions })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeAddUserModal();
+            loadUsers();
+            alert('تم تحديث المستخدم بنجاح');
+        } else {
+            alert(data.error || 'حدث خطأ أثناء تحديث المستخدم');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ أثناء تحديث المستخدم');
+    });
+}
+
+// Update closeAddUserModal to reset the form
+function closeAddUserModal() {
+    document.getElementById('addUserModal').style.display = 'none';
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    document.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+    
+    // Reset save button to handle new user
+    const saveButton = document.querySelector('.modal-actions .btn-success');
+    saveButton.onclick = saveNewUser;
+}
+
+
+// Call loadUsers when page loads
+loadUsers();
+
+
+// Add to your existing JavaScript section
+
+function loadDeliveryWorkers() {
+    fetch('/get_delivery_workers')
+        .then(response => response.json())
+        .then(workers => {
+            const tbody = document.getElementById('workersTable');
+            tbody.innerHTML = workers.map(worker => `
+                <tr class="${worker.status === 'inactive' ? 'inactive-row' : ''}">
+                    <td>${worker.name}</td>
+                    <td>${worker.phone}</td>
+                    <td>${worker.status === 'active' ? 'نشط' : 'غير نشط'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editWorker(${JSON.stringify(worker)})">
+                            تعديل
+                        </button>
+                        ${worker.status === 'active' ? 
+                            `<button class="btn btn-sm btn-warning" onclick="toggleWorkerStatus(${worker.id}, 'inactive')">
+                                إيقاف
+                            </button>` :
+                            `<button class="btn btn-sm btn-success" onclick="toggleWorkerStatus(${worker.id}, 'active')">
+                                تنشيط
+                            </button>`
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => console.error('Error loading workers:', error));
+}
+
+// Add this new function to handle status toggle
+async function toggleWorkerStatus(workerId, newStatus) {
+    try {
+        const response = await fetch(`/update_delivery_worker/${workerId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (!response.ok) throw new Error('Failed to update worker status');
+        
+        loadDeliveryWorkers();
+    } catch (error) {
+        console.error('Error updating worker status:', error);
+    }
+}
+
+
+function showAddWorkerModal() {
+    const modal = document.getElementById('workerModal');
+    document.getElementById('workerForm').reset();
+    document.getElementById('workerId').value = '';
+    document.getElementById('statusGroup').style.display = 'none';
+    document.getElementById('workerModalTitle').textContent = 'إضافة عامل توصيل';
+    
+    if (typeof jQuery !== 'undefined') {
+        $('#workerModal').modal('show');
+    } else {
+        modal.style.display = 'block';
+        modal.classList.add('show');
+    }
+}
+
+function closeWorkerModal() {
+    const modal = document.getElementById('workerModal');
+    if (typeof jQuery !== 'undefined') {
+        $('#workerModal').modal('hide');
+    } else {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+    }
+}
+
+function editWorker(worker) {
+    document.getElementById('workerId').value = worker.id;
+    document.getElementById('workerName').value = worker.name;
+    document.getElementById('workerPhone').value = worker.phone;
+    document.getElementById('workerStatus').value = worker.status;
+    document.getElementById('statusGroup').style.display = 'block';
+    document.getElementById('workerModalTitle').textContent = 'تعديل عامل توصيل';
+    showAddWorkerModal();
+}
+
+async function saveWorker() {
+    const workerId = document.getElementById('workerId').value;
+    const data = {
+        name: document.getElementById('workerName').value,
+        phone: document.getElementById('workerPhone').value,
+        status: document.getElementById('workerStatus').value
+    };
+
+    try {
+        const url = workerId ? `/update_delivery_worker/${workerId}` : '/save_delivery_worker';
+        const method = workerId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Failed to save worker');
+        
+        closeWorkerModal();
+        loadDeliveryWorkers();
+        showAlert('success', 'تم حفظ عامل التوصيل بنجاح');
+    } catch (error) {
+        console.error('Error saving worker:', error);
+        showAlert('error', 'حدث خطأ أثناء حفظ عامل التوصيل');
+    }
+}
+
+async function deleteWorker(workerId) {
+    if (!confirm('هل أنت متأكد من حذف عامل التوصيل؟')) return;
+
+    try {
+        const response = await fetch(`/delete_delivery_worker/${workerId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete worker');
+        
+        loadDeliveryWorkers();
+        showAlert('success', 'تم حذف عامل التوصيل بنجاح');
+    } catch (error) {
+        console.error('Error deleting worker:', error);
+                showAlert('error', 'حدث خطأ أثناء حذف عامل التوصيل');
+    }
+}
+
+// Cash Boxes Management Functions
+
+function loadCashBoxes() {
+    fetch('/get_all_cash_boxes')
+        .then(response => response.json())
+        .then(boxes => {
+            const tbody = document.getElementById('cashBoxesTable');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            boxes.forEach(box => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${box.name}</td>
+                    <td>${box.is_default ? '<span style="color: #059669;">افتراضي</span>' : 'مخصص'}</td>
+                    <td>
+                        <input type="checkbox" ${box.is_active ? 'checked' : ''} ${box.is_default ? 'disabled' : ''} onchange="toggleCashBoxActive(${box.id}, this.checked)">
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading cash boxes:', error);
+        });
+}
+
+function showAddCashBoxModal() {
+    document.getElementById('cashBoxModal').style.display = 'block';
+    document.getElementById('cashBoxName').value = '';
+}
+
+function closeCashBoxModal() {
+    document.getElementById('cashBoxModal').style.display = 'none';
+}
+
+function saveCashBox() {
+    const name = document.getElementById('cashBoxName').value.trim();
+    
+    if (!name) {
+        alert('الرجاء إدخال اسم الصندوق');
+        return;
+    }
+    
+    fetch('/add_cash_box', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('تم إضافة الصندوق بنجاح');
+            closeCashBoxModal();
+            loadCashBoxes();
+        } else {
+            alert('خطأ: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ أثناء إضافة الصندوق');
+    });
+}
+
+function toggleCashBoxActive(boxId, isActive) {
+    fetch('/set_cash_box_active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ box_id: boxId, active: isActive })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('خطأ: ' + (data.error || 'فشل تحديث حالة الصندوق'));
+            loadCashBoxes();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ أثناء تحديث حالة الصندوق');
+        loadCashBoxes();
+    });
+}
+
+// Consolidated ready: load helpers once
+document.addEventListener('DOMContentLoaded', function() {
+    loadDeliveryWorkers();
+    loadCashBoxes();
+});
+
+</script>
+{% endblock %}

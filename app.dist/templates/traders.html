@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}التجار - Supermarket POS{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='items.css') }}">
+
+<div class="traders-container">
+    <div class="search-form">
+        <input type="text" id="searchInput" placeholder="البحث باسم التاجر أو الشركة">
+    </div>
+
+    <div class="trader-form">
+        <input type="text" id="traderId" readonly hidden>
+        <input type="text" id="name" placeholder="اسم التاجر">
+        <input type="text" id="phone" placeholder="رقم الهاتف">
+            <select id="company" class="form-control">
+                <option value="">اختر الشركة</option>
+                {% for company in companies %}
+                <option value="{{ company.id }}">{{ company.name }}</option>
+                {% endfor %}
+            </select>
+        
+        <div class="days-selection">
+            <label><input type="checkbox" name="days" value="السبت"> السبت</label>
+            <label><input type="checkbox" name="days" value="الأحد"> الأحد</label>
+            <label><input type="checkbox" name="days" value="الاثنين"> الاثنين</label>
+            <label><input type="checkbox" name="days" value="الثلاثاء"> الثلاثاء</label>
+            <label><input type="checkbox" name="days" value="الأربعاء"> الأربعاء</label>
+            <label><input type="checkbox" name="days" value="الخميس"> الخميس</label>
+            <label><input type="checkbox" name="days" value="الجمعة"> الجمعة</label>
+        </div>
+
+        <div class="trader-actions">
+            <button class="btn save-btn" id="saveBtn" disabled title="حفظ"><i class="fas fa-save"></i></button>
+            <button class="btn delete-btn" id="deleteBtn" disabled title="حذف"><i class="fas fa-trash"></i></button>
+            <button class="btn clear-btn" id="clearBtn" title="مسح" onclick="clearFields()"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <div class="traders-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم التاجر</th>
+                    <th>رقم الهاتف</th>
+                    <th>أيام التواجد</th>
+                    <th>الشركة</th>
+                </tr>
+            </thead>
+            <tbody id="tradersTableBody">
+                {% for trader in traders %}
+                <tr data-trader='{{ trader|tojson }}' onclick="selectTrader(this)">
+                    <td>{{ trader.name }}</td>
+                    <td>{{ trader.phone }}</td>
+                    <td>{{ trader.days }}</td>
+                    <td>{{ trader.company_name }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Archived traders section -->
+    <div class="archived-section">
+        <h4 style="margin-top:18px;">التجار المؤرشفون (Archived)</h4>
+        <p class="text-muted">يمكنك استعادة تاجر من هنا.</p>
+        <div class="archived-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>اسم التاجر</th>
+                        <th>رقم الهاتف</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="archivedTradersBody">
+                    <!-- Filled by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('name').focus();
+    setupEventListeners();
+    loadArchivedTraders(); // Load archived traders on page load
+});
+
+function setupEventListeners() {
+    document.getElementById('searchInput').addEventListener('input', handleSearch);
+    document.getElementById('saveBtn').addEventListener('click', handleSave);
+    const delBtn = document.getElementById('deleteBtn');
+    if (delBtn) delBtn.addEventListener('click', handleDelete);
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) clearBtn.addEventListener('click', clearFields);
+
+    ['name', 'phone', 'company'].forEach(field => {
+        document.getElementById(field).addEventListener('input', () => validateForm());
+    });
+
+    document.querySelectorAll('input[name="days"]').forEach(checkbox => {
+        checkbox.addEventListener('change', () => validateForm());
+    });
+}
+
+function handleSearch(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#tradersTableBody tr');
+    
+    rows.forEach(row => {
+        const name = row.cells[0].textContent.toLowerCase();
+        const company = row.cells[3].textContent.toLowerCase();
+        const isVisible = name.includes(searchTerm) || company.includes(searchTerm);
+        row.style.display = isVisible ? '' : 'none';
+    });
+}
+
+function selectTrader(row) {
+    const trader = JSON.parse(row.dataset.trader);
+    fillFormData(trader);
+    validateForm();
+}
+
+function fillFormData(trader) {
+    document.getElementById('traderId').value = trader.id;
+    document.getElementById('name').value = trader.name;
+    document.getElementById('phone').value = trader.phone;
+    document.getElementById('company').value = trader.company;
+    
+    // Handle days checkboxes
+    const selectedDays = trader.days ? trader.days.split(',').map(d => d.trim()) : [];
+    document.querySelectorAll('input[name="days"]').forEach(checkbox => {
+        checkbox.checked = selectedDays.includes(checkbox.value);
+    });
+}
+
+function validateForm(showAlerts = false) {
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const isValid = name && phone;
+    const hasSelection = !!document.getElementById('traderId').value;
+
+    if (showAlerts && !isValid) {
+        alert("يجب ملء الحقول الإلزامية");
+        return false;
+    }
+
+    document.getElementById('saveBtn').disabled = !isValid;
+    // enable delete only when a trader is selected
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (deleteBtn) deleteBtn.disabled = !hasSelection;
+    return isValid;
+}
+
+function clearFields() {
+    ['traderId', 'name', 'phone', 'company'].forEach(field => {
+        document.getElementById(field).value = '';
+    });
+    document.querySelectorAll('input[name="days"]').forEach(cb => cb.checked = false);
+    document.getElementById('saveBtn').disabled = true;
+    const deleteBtn = document.getElementById('deleteBtn'); if (deleteBtn) deleteBtn.disabled = true;
+}
+
+// removed duplicate updateTable; single implementation exists below
+
+function handleSave() {
+    if (!validateForm(true)) return;
+
+    const traderData = {
+        id: document.getElementById('traderId').value,
+        name: document.getElementById('name').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        company: document.getElementById('company').value,
+        days: Array.from(document.querySelectorAll('input[name="days"]:checked'))
+            .map(cb => cb.value)
+            .join(', ')
+    };
+
+    const method = traderData.id ? 'PUT' : 'POST';
+    const endpoint = traderData.id ? `/update_trader/${traderData.id}` : '/save_trader';
+
+    fetch(endpoint, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(traderData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTable();  // This will refresh the table
+            clearFields();
+            document.getElementById('name').focus();
+        } else {
+            alert(data.message || 'Failed to save trader');
+        }
+    });
+}
+
+function handleDelete() {
+    const traderId = document.getElementById('traderId').value;
+    if (!traderId) {
+        alert('يرجى اختيار التاجر للحذف');
+        return;
+    }
+
+    if (!confirm('هل أنت متأكد أنك تريد إلغاء تفعيل هذا التاجر؟ سيتم وضع الحقل active = 0')) return;
+
+    fetch(`/delete_trader/${traderId}`, { method: 'DELETE' })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                updateTable();
+                clearFields();
+            } else {
+                alert(result.error || 'فشل في حذف التاجر');
+            }
+        })
+        .catch(err => {
+            console.error('Error deleting trader', err);
+            alert('حدث خطأ أثناء حذف التاجر');
+        });
+}
+
+function updateTable() {
+    fetch('/get_traders')
+        .then(response => response.json())
+        .then(traders => {
+            const tbody = document.getElementById('tradersTableBody');
+            tbody.innerHTML = traders.map(trader => `
+                <tr data-trader='${JSON.stringify(trader)}' onclick="selectTrader(this)">
+                    <td>${trader.name}</td>
+                    <td>${trader.phone}</td>
+                    <td>${trader.days || ''}</td>
+                    <td>${trader.company_name || ''}</td>
+                </tr>
+            `).join('');
+            // also refresh archived traders list
+            loadArchivedTraders();
+        });
+}
+
+function loadArchivedTraders() {
+    fetch('/get_deleted_traders')
+        .then(res => res.json())
+        .then(traders => {
+            const tbody = document.getElementById('archivedTradersBody');
+            if (!tbody) return;
+            tbody.innerHTML = traders.length ? traders.map(t => `
+                <tr>
+                    <td>${t.name}</td>
+                    <td>${t.phone || ''}</td>
+                    <td><button class="btn btn-sm btn-primary" onclick="restoreTrader(${t.id}, this)">استعادة</button></td>
+                </tr>
+            `).join('') : '<tr><td colspan="3" class="text-muted">لا توجد سجلات مؤرشفة</td></tr>';
+        })
+        .catch(err => {
+            console.error('Failed loading archived traders', err);
+        });
+}
+
+function restoreTrader(id, btn) {
+    if (!confirm('هل تريد استعادة هذا التاجر؟')) return;
+    btn.disabled = true;
+    fetch('/restore_trader', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id})
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            updateTable();
+        } else {
+            alert(result.message || 'فشل في استعادة التاجر');
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        console.error('restore error', err);
+        alert('حدث خطأ أثناء الاستعادة');
+        btn.disabled = false;
+    });
+}
+
+</script>
+{% endblock %}

@@ -1,0 +1,1334 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='items.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jquery-ui.min.css') }}">
+
+<style>
+.invoice-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.add-item-section {
+    height: 50vh;
+    min-height: 320px;
+    width: 100%;
+    padding: 16px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e0e0e0;
+    box-sizing: border-box;
+}
+
+.add-item-section .item-form {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.add-item-section .form-group {
+    margin-bottom: 12px;
+}
+
+.add-item-section .form-group input#barcode {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+}
+
+.add-item-section .form-group input#barcode:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.add-item-section .form-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.items-list {
+    margin-top: 12px;
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: white;
+}
+
+.items-table-lookup {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.items-table-lookup thead {
+    position: sticky;
+    top: 0;
+    background: #f5f5f5;
+    z-index: 10;
+}
+
+.items-table-lookup thead th {
+    text-align: right;
+    padding: 12px 16px;
+    border-bottom: 2px solid #ddd;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+    background: #f5f5f5;
+}
+
+.items-table-lookup tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.items-table-lookup tbody tr:hover {
+    background-color: #f0f7ff;
+}
+
+.items-table-lookup tbody tr:active {
+    background-color: #e3f2fd;
+}
+
+.items-table-lookup tbody td {
+    padding: 10px 16px;
+    text-align: right;
+    font-size: 14px;
+    color: #444;
+}
+
+/* Column widths */
+.items-table-lookup th:nth-child(1),
+.items-table-lookup td:nth-child(1) {
+    width: 20%;
+}
+
+.items-table-lookup th:nth-child(2),
+.items-table-lookup td:nth-child(2) {
+    width: 40%;
+}
+
+.items-table-lookup th:nth-child(3),
+.items-table-lookup td:nth-child(3) {
+    width: 25%;
+}
+
+.items-table-lookup th:nth-child(4),
+.items-table-lookup td:nth-child(4) {
+    width: 15%;
+}
+</style>
+
+</style>
+
+<div class="invoice-container">
+    <!-- Section 1: Add Items (visible: only search box) -->
+    <section class="add-item-section">
+        <div class="item-form">
+            <!-- Visible search textbox -->
+            <div class="form-group">
+                <label for="barcode">ابحث باسم أو باركود</label>
+                <input type="text" id="barcode" placeholder="ابحث عن منتج..." >
+            </div>
+
+            <!-- Items list: searchable table populated from /get_items -->
+            <div class="items-list">
+                <table id="itemsTable" class="items-table-lookup">
+                    <thead>
+                        <tr>
+                            <th>باركود</th>
+                            <th>اسم المنتج</th>
+                            <th>الفئة</th>
+                            <th>الكمية</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Hidden helpers: keep these elements in DOM so JS can bind to them -->
+            <div class="form-group" style="display:none;">
+                <select id="categorySelect" class="form-control">
+                    <option value="">اختر الفئة</option>
+                </select>
+                <label for="categorySelect">الفئة</label>
+            </div>
+            <div class="form-group" style="display:none;">
+                <input type="text" id="itemName" class="form-control" placeholder=" ">
+                <label for="itemName">اسم المنتج</label>
+            </div>
+            <div class="form-group" style="display:none;">
+                <input type="number" id="quantity" placeholder=" ">
+                <label for="quantity">الكمية</label>
+            </div>
+            <div class="form-group" style="display:none;">
+                <input type="hidden" id="quantityType" value="1">
+            </div>
+            <div class="form-group" style="display:none;">
+                <input type="number" id="pricePerUnit" step="0.01" placeholder=" ">
+                <label for="pricePerUnit">السعر لكل وحدة</label>
+            </div>
+            <div class="form-group" style="display:none;">
+                <input type="number" id="buyPrice" placeholder=" ">
+                <label for="buyPrice">سعر الشراء للقطعه</label>
+            </div>
+            <div class="form-group" style="display:none;">
+                <input type="number" id="sellPrice" placeholder=" ">
+                <label for="sellPrice">سعر البيع للقطعه</label>
+            </div>
+            <div class="form-group" style="display:none;">
+                <input type="number" id="totalPrice" placeholder=" " readonly>
+                <label for="totalPrice">الإجمالي</label>
+            </div>
+
+            <!-- Keep buttons present but hidden so event listeners don't fail -->
+            <button class="btn save-btn" id="addToInvoice" style="display:none;">
+                <i class="fas fa-plus"></i>
+                إضافة للفاتورة
+            </button>
+            <button class="btn delete-btn" id="deleteItem" style="display:none;">
+                <i class="fas fa-trash"></i>
+                حذف
+            </button>
+        </div>
+    </section>
+
+    <!-- Section 2: Invoice Items Table -->
+    <section class="invoice-items-section">
+        <div class="items-table">
+            <table>
+                <thead>
+                    <tr>
+                            <th>الباركود</th>
+                            <th>اسم المنتج</th>
+                            <th>الكمية</th>
+                            <th>سعر الشراء</th>
+                            <th>سعر البيع</th>
+                            <th>الإجمالي</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                </thead>
+                <tbody id="invoiceItems"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Section 3: Invoice Details -->
+    <section class="invoice-details-section">
+        <div class="item-form">
+            <select id="traderName" class="form-control">
+                <option value="">اختر التاجر</option>
+            </select>
+            <div class="total-amount">
+                <span>إجمالي الفاتورة:</span>
+                <span id="totalAmount">0</span>
+            </div>
+
+            <div class="discount-section">
+                <div class="form-group">
+                    <input type="number" id="discountValue" placeholder=" " step="1">
+                    <label for="discountValue">قيمة الخصم</label>
+                </div>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="discountType" value="percentage">
+                        <span>نسبة مئوية %</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="discountType" value="fixed">
+                        <span>مبلغ ثابت</span>
+                    </label>
+                </div>
+                <div class="discount-result">
+                    <span>قيمة الخصم:</span>
+                    <span id="discountAmount">0</span>
+                </div>
+
+                <!-- Add this after the discount-result div -->
+<div class="final-total">
+    <span>الإجمالي بعد الخصم:</span>
+    <span id="finalTotal">0</span>
+</div>
+
+            </div>
+
+            
+            <!-- Replace the existing payment-type div with this -->
+            <div class="payment-type">
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="paymentType" value="immediate" checked required> 
+                        <span>دفع كامل</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="paymentType" value="partial" required>
+                        <span>دفع جزئي</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="paymentType" value="delayed" required>
+                        <span>أجل</span>
+                    </label>
+                </div>
+                <div class="partial-payment" style="display: none;">
+                    <div class="form-group">
+                        <input type="number" id="partialAmount" placeholder=" " min="0" step="0.01">
+                        <label for="partialAmount">المبلغ المدفوع</label>
+                    </div>
+                    <div class="remaining-amount">
+                        <span>المبلغ المتبقي:</span>
+                        <span id="remainingAmount">0.00</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn save-btn" id="saveInvoice">
+                <i class="fas fa-save"></i>
+                حفظ الفاتورة
+            </button>
+        </div>
+    </section>
+</div>
+
+
+
+<!-- jQuery and jQuery UI are already loaded from base.html; don't load them again here -->
+
+<script>
+ 
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded and parsed');
+            console.log('jQuery version:', $.fn && $.fn.jquery);
+            try {
+                console.log('jQuery UI version:', (typeof $.ui !== 'undefined') ? $.ui.version : 'not-loaded');
+            } catch (e) {
+                console.warn('jQuery UI not available yet');
+            }
+
+            // Single observer declaration at top level
+            let totalAmountObserver;
+        
+            // Element references
+                const elements = {
+                barcode: document.getElementById('barcode'),
+                itemName: document.getElementById('itemName'),
+                quantity: document.getElementById('quantity'),
+                pricePerUnit: document.getElementById('pricePerUnit'),
+                buyPrice: document.getElementById('buyPrice'),
+                sellPrice: document.getElementById('sellPrice'),
+                totalPrice: document.getElementById('totalPrice'),
+                traderName: document.getElementById('traderName'),
+                companyName: document.getElementById('companyName'),
+                addToInvoice: document.getElementById('addToInvoice'),
+                deleteItem: document.getElementById('deleteItem'),
+                saveInvoice: document.getElementById('saveInvoice'),
+                invoiceItems: document.getElementById('invoiceItems'),
+                totalAmount: document.getElementById('totalAmount'),
+                finalTotal: document.getElementById('finalTotal'),
+                discountValue: document.getElementById('discountValue'),
+                discountAmount: document.getElementById('discountAmount'),
+                paymentTypeRadios: document.getElementsByName('paymentType'),
+                discountTypeRadios: document.getElementsByName('discountType'),
+                partialPaymentDiv: document.querySelector('.partial-payment'),
+                categorySelect: document.getElementById('categorySelect'),
+            };
+        
+            function initializeForm() {
+                // Set default radio selections with proper error handling
+                const defaultDiscountRadio = document.querySelector('input[name="discountType"][value="fixed"]');
+                const defaultPaymentRadio = document.querySelector('input[name="paymentType"][value="immediate"]');
+                
+                if (defaultDiscountRadio) {
+                    defaultDiscountRadio.checked = true;
+                } else {
+                    console.error('Discount type radio not found');
+                }
+                
+                if (defaultPaymentRadio) {
+                    defaultPaymentRadio.checked = true;
+                    console.log('Set default payment type to immediate');
+                } else {
+                    console.error('Payment type radio not found');
+                }
+                
+                // Set default discount value
+                elements.discountValue.value = '0';
+                elements.discountAmount.textContent = '0.00';
+                
+                // Initialize total amount equal to subtotal
+                const initialTotal = parseFloat(elements.totalAmount.textContent) || 0;
+                elements.finalTotal.textContent = initialTotal.toFixed(2);
+            
+                // Setup listeners
+                setupDiscountListeners();
+                setupPaymentListeners();
+                setupTotalAmountObserver();
+            }
+
+            async function loadTraders() {
+                try {
+                    const response = await fetch('/get_traders');
+                    const traders = await response.json();
+        
+                    const traderSelect = document.getElementById('traderName');
+                    traders.forEach(trader => {
+                        const option = document.createElement('option');
+                        option.value = trader.id;
+                        option.textContent = trader.name;
+                        traderSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error loading traders:', error);
+                }
+            }
+
+            async function loadCategories() {
+                try {
+                    const response = await fetch('/get_categories_Invoices');
+                    const categories = await response.json();
+
+                    const categorySelect = elements.categorySelect;
+                    categorySelect.innerHTML = '<option value="">اختر الفئة</option>';
+                    
+                    categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        categorySelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error loading categories:', error);
+                }
+            }
+
+            function calculateDiscount() {
+                const subtotal = parseFloat(elements.totalAmount.textContent) || 0;
+                const value = parseFloat(elements.discountValue.value) || 0;
+                const type = document.querySelector('input[name="discountType"]:checked')?.value || 'fixed';
+                
+                let discount = 0;
+                if (type === 'percentage') {
+                    // Calculate percentage correctly
+                    discount = (subtotal * value) / 100;
+                    console.log('Percentage calculation:', {
+                        subtotal,
+                        percentage: value,
+                        calculated: discount
+                    });
+                } else {
+                    discount = value;
+                }
+                
+                // Ensure discount doesn't exceed subtotal
+                discount = Math.min(discount, subtotal);
+                totalAmountObserver.observe(elements.totalAmount, { 
+                    childList: true, 
+                    characterData: true, 
+                    subtree: true 
+                });
+            }
+        
+            function calculateRemaining() {
+                const total = parseFloat(elements.finalTotal.textContent) || 0; // Use final total after discount
+                const paid = parseFloat(document.getElementById('partialAmount').value) || 0;
+                const remaining = Math.max(0, total - paid);
+                document.getElementById('remainingAmount').textContent = remaining.toFixed(2);
+            }
+        
+            // Provide missing helpers so initializeForm doesn't throw
+            function setupDiscountListeners() {
+                try {
+                    const discountInput = elements.discountValue;
+                    if (discountInput) {
+                        discountInput.removeEventListener('input', calculateDiscount);
+                        discountInput.addEventListener('input', function() {
+                            try {
+                                // Recalculate discount and update displayed values
+                                const subtotal = parseFloat(elements.totalAmount.textContent) || 0;
+                                const value = parseFloat(elements.discountValue.value) || 0;
+                                const type = document.querySelector('input[name="discountType"]:checked')?.value || 'fixed';
+                                let discount = type === 'percentage' ? (subtotal * value) / 100 : value;
+                                discount = Math.min(discount, subtotal);
+                                elements.discountAmount.textContent = discount.toFixed(2);
+                                elements.finalTotal.textContent = (subtotal - discount).toFixed(2);
+                            } catch (err) {
+                                console.error('Error in discount input handler', err);
+                            }
+                        });
+                    }
+
+                    // Wire discount type radios
+                    const discountRadios = document.getElementsByName('discountType') || [];
+                    Array.prototype.forEach.call(discountRadios, function(radio) {
+                        radio.removeEventListener('change', calculateDiscount);
+                        radio.addEventListener('change', function() {
+                            // trigger recalculation
+                            if (elements.discountValue) elements.discountValue.dispatchEvent(new Event('input'));
+                        });
+                    });
+                } catch (e) {
+                    console.warn('setupDiscountListeners: failed to init', e);
+                }
+            }
+
+            function setupTotalAmountObserver() {
+                try {
+                    // Use a mutation observer to recalc discount/final total when subtotal changes
+                    totalAmountObserver = new MutationObserver(function() {
+                        try {
+                            const subtotal = parseFloat(elements.totalAmount.textContent) || 0;
+                            const discount = parseFloat(elements.discountAmount.textContent) || 0;
+                            elements.finalTotal.textContent = (subtotal - discount).toFixed(2);
+                        } catch (err) {
+                            console.error('totalAmountObserver error', err);
+                        }
+                    });
+                    if (elements.totalAmount) {
+                        totalAmountObserver.observe(elements.totalAmount, { childList: true, characterData: true, subtree: true });
+                    }
+                } catch (e) {
+                    console.warn('setupTotalAmountObserver: failed to init', e);
+                }
+            }
+
+            // Initialize everything
+            initializeForm();
+            loadTraders();
+
+            function setupPaymentListeners() {
+                console.log('Setting up payment listeners...');
+                
+                if (!elements.paymentTypeRadios) {
+                    console.error('Payment type radios not found');
+                    return;
+                }
+
+                // Remove old listeners first
+                elements.paymentTypeRadios.forEach(radio => {
+                    radio.removeEventListener('change', handlePaymentChange);
+                });
+
+                // Add new listeners
+                elements.paymentTypeRadios.forEach(radio => {
+                    console.log('Setting up listener for:', radio.value);
+                    // Add click listener in addition to change
+                    radio.addEventListener('click', handlePaymentChange);
+                    radio.addEventListener('change', handlePaymentChange);
+                });
+
+                // Set up partial amount listener
+                const partialAmount = document.getElementById('partialAmount');
+                if (partialAmount) {
+                    partialAmount.removeEventListener('input', calculateRemaining);
+                    partialAmount.addEventListener('input', calculateRemaining);
+                }
+            }
+            function verifyRadioButtons() {
+                console.log('Verifying radio buttons...');
+                const paymentRadios = Array.from(elements.paymentTypeRadios);
+                const checkedPayment = paymentRadios.find(radio => radio.checked);
+                
+                if (!checkedPayment) {
+                    console.log('No payment type selected, setting default...');
+                    const defaultPayment = paymentRadios.find(radio => radio.value === 'immediate');
+                    if (defaultPayment) {
+                        defaultPayment.checked = true;
+                    }
+                }
+                
+                console.log('Current payment selection:', paymentRadios.map(r => ({
+                    value: r.value,
+                    checked: r.checked
+                })));
+            }
+
+            function handlePaymentChange(event) {
+                const selectedValue = event.target.value;
+                console.log('Payment type changed to:', selectedValue);
+                
+                // Store the selected value in a data attribute on the form
+                document.querySelector('.invoice-container').dataset.paymentType = selectedValue;
+                
+                if (selectedValue === 'partial') {
+                    elements.partialPaymentDiv.style.display = 'block';
+                    calculateRemaining();
+                } else {
+                    elements.partialPaymentDiv.style.display = 'none';
+                }
+            }
+            
+            function getSelectedRadioValue(name) {
+                const radio = document.querySelector(`input[name="${name}"]:checked`);
+                console.log(`Getting ${name} value:`, radio?.value); // Debug log
+                return radio?.value;
+            }
+            // Add item to invoice
+            elements.addToInvoice.addEventListener('click', function() {
+                if (!validateItemBeforeAdd()) return;  // Use validateItemBeforeAdd instead of validateForm
+        
+                const item = {
+                    barcode: elements.barcode.value,
+                    name: elements.itemName.value,
+                    quantity: parseFloat(elements.quantity.value),
+                    quantityType: parseInt(elements.quantityType.value),
+                    buyPrice: parseFloat(elements.buyPrice.value),
+                    sellPrice: parseFloat(elements.sellPrice.value),
+                    total: parseFloat(elements.totalPrice.value)
+                };
+        
+                addRowToTable(item);
+                clearForm();
+                calculateInvoiceTotal();
+                elements.barcode.focus();
+            });
+        
+            // Save invoice
+            elements.saveInvoice.addEventListener('click', async function() {
+                // First check if trader is selected
+                if (!elements.traderName.value) {
+                    alert('الرجاء اختيار التاجر');
+                    return;
+                }
+            
+                const paymentTypeRadio = Array.from(elements.paymentTypeRadios).find(radio => radio.checked);
+                console.log('Payment radios:', Array.from(elements.paymentTypeRadios).map(r => ({ value: r.value, checked: r.checked })));
+                console.log('Selected payment radio:', paymentTypeRadio);
+
+
+            
+                // Validate selections
+                if (!paymentTypeRadio || !paymentTypeRadio.value) {
+                    alert('الرجاء اختيار طريقة الدفع');
+                    return;
+                }
+            
+                // Get the values after validation
+                const selectedPaymentType = paymentTypeRadio.value;
+                const selectedDiscountType = Array.from(elements.discountTypeRadios).find(radio => radio.checked)?.value || 'fixed';
+
+            
+                console.log('Selected payment type:', selectedPaymentType);
+                console.log('Selected discount type:', selectedDiscountType);
+            
+                // Check if there are items in the invoice
+                const items = Array.from(elements.invoiceItems.getElementsByTagName('tr'));
+                if (items.length === 0) {
+                    alert('الرجاء إضافة منتجات للفاتورة');
+                    return;
+                }
+                
+                // Validate that all sell prices are greater than buy prices
+                for (const row of items) {
+                    const buyPrice = parseFloat(row.querySelector('.invoice-buy')?.value) || 0;
+                    const sellPrice = parseFloat(row.querySelector('.invoice-sell')?.value) || 0;
+                    const itemName = row.cells[1].textContent.trim();
+                    
+                    if (sellPrice <= buyPrice) {
+                        alert(`سعر البيع للمنتج "${itemName}" يجب أن يكون أكبر من سعر الشراء`);
+                        row.querySelector('.invoice-sell')?.focus();
+                        return;
+                    }
+                }
+            
+                // Prepare invoice data
+                const invoiceData = {
+                    trader_id: elements.traderName.value,
+                    total_amount: parseFloat(elements.finalTotal.textContent),
+                    subtotal: parseFloat(elements.totalAmount.textContent),
+                    discount_type: selectedDiscountType,
+                    discount_value: parseFloat(elements.discountValue.value) || 0,
+                    discount_amount: parseFloat(elements.discountAmount.textContent) || 0,
+                    payment_type: selectedPaymentType,
+                    items: items.map(row => ({
+                        barcode: row.cells[0].textContent.trim(),
+                        name: row.cells[1].textContent.trim(),
+                        quantity: parseFloat(row.querySelector('.invoice-qty')?.value) || 0,
+                        quantity_type: 1,
+                        buy_price: parseFloat(row.querySelector('.invoice-buy')?.value) || 0,
+                        sell_price: parseFloat(row.querySelector('.invoice-sell')?.value) || 0,
+                        total: parseFloat(row.querySelector('.row-total')?.textContent) || 0
+                    }))
+                };
+            
+                // Add payment-specific values
+                switch (selectedPaymentType) {
+                    case 'partial':
+                        const partialAmount = parseFloat(document.getElementById('partialAmount').value) || 0;
+                        if (partialAmount <= 0) {
+                            alert('الرجاء إدخال المبلغ المدفوع');
+                            document.getElementById('partialAmount').focus();
+                            return;
+                        }
+                        invoiceData.paid_amount = partialAmount;
+                        invoiceData.remaining_amount = parseFloat(document.getElementById('remainingAmount').textContent) || 0;
+                        break;
+                    case 'immediate':
+                        invoiceData.paid_amount = invoiceData.total_amount;
+                        invoiceData.remaining_amount = 0;
+                        break;
+                    case 'delayed':
+                        invoiceData.paid_amount = 0;
+                        invoiceData.remaining_amount = invoiceData.total_amount;
+                        break;
+                }
+            
+                console.log('Sending invoice data:', invoiceData);
+            
+                try {
+                    const response = await fetch('/save_invoice', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(invoiceData)
+                    });
+            
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to save invoice');
+                    }
+            
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('تم حفظ الفاتورة بنجاح');
+                        window.location.reload();
+                    } else {
+                        throw new Error(result.error || 'Failed to save invoice');
+                    }
+                } catch (error) {
+                    console.error('Error saving invoice:', error);
+                    alert('حدث خطأ أثناء حفظ الفاتورة: ' + error.message);
+                }
+            });
+            
+            // Initialize select2 for better searchable dropdown
+            
+            console.log('Initializing autocomplete for itemName');
+            $(elements.itemName).autocomplete({
+                source: function(request, response) {
+                    fetch(`/get_item_suggestions?term=${request.term}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            const items = data.map(item => ({
+                                label: item.name,
+                                value: item.name,
+                                barcode: item.barcode,
+                                buy_price: item.buy_price,
+                                sell_price: item.sell_price,
+                                category_id: item.category_id,
+                                last_quantity_type: item.last_quantity_type
+                            }));
+                            response(items);
+                        });
+                },
+                minLength: 2,
+                position: { 
+                    my: "left top",
+                    at: "left bottom",
+                    collision: "none"
+                },
+                appendTo: elements.itemName.parentElement,
+                select: function(event, ui) {
+                    if (ui.item) {
+                        fillItemDetails({
+                            barcode: ui.item.barcode,
+                            name: ui.item.value,
+                            buy_price: ui.item.buy_price,
+                            sell_price: ui.item.sell_price,
+                            category_id: ui.item.category_id,
+                            last_quantity_type: ui.item.last_quantity_type
+                        });
+                        elements.quantity.focus();
+                    }
+                }
+            })
+            
+            .autocomplete("instance")._renderItem = function(ul, item) {
+                    return $("<li>")
+                        .append(`<div>${item.label}</div>`)
+                        .appendTo(ul);
+            };
+        
+            // Barcode handler with timeout
+            let barcodeTimeout;
+            elements.barcode.addEventListener('input', function() {
+                clearTimeout(barcodeTimeout);
+                const barcode = this.value;
+                
+                barcodeTimeout = setTimeout(async () => {
+                    if (barcode) {
+                        try {
+                            const response = await fetch(`/get_item_details/${barcode}`);
+                            if (!response.ok) {
+                                // Item not found in database
+                                clearFormExceptBarcode();
+                                elements.itemName.focus();
+                                elements.itemName.classList.add('new-item');
+                                return;
+                            }
+        
+                            const item = await response.json();
+                            
+                            if (item && Object.keys(item).length > 0) {
+                                // Check if item is already in the invoice
+                                const tbody = elements.invoiceItems.querySelector('tbody') || elements.invoiceItems;
+                                const existingRows = tbody.querySelectorAll('tr');
+                                
+                                for (const row of existingRows) {
+                                    const rowBarcode = row.cells[0]?.textContent?.trim();
+                                    if (rowBarcode === barcode) {
+                                        alert('هذا المنتج موجود بالفعل في الفاتورة. يمكنك تعديل الكمية من الجدول.');
+                                        clearForm();
+                                        elements.barcode.focus();
+                                        return;
+                                    }
+                                }
+                                
+                                // Item found - fill details (guard each element)
+                                if (elements.itemName) elements.itemName.value = item.name || '';
+                                if (elements.sellPrice) elements.sellPrice.value = item.sell_price || '';
+                                if (elements.barcode) elements.barcode.value = item.barcode || '';
+                                if (elements.buyPrice) elements.buyPrice.value = item.buy_price || '';
+                                if (elements.categorySelect) elements.categorySelect.value = item.category_id || '';
+                                if (elements.quantityType) elements.quantityType.value = item.last_quantity_type || 1;
+
+                                // Calculate pricePerUnit based on buy_price and quantityType
+                                const quantityType = parseInt(elements.quantityType.value) || 1;
+                                if (elements.pricePerUnit) elements.pricePerUnit.value = (item.buy_price * quantityType).toFixed(2);
+                                
+                                // Trigger calculations
+                                calculateBuyPrice();
+                                calculateItemTotal();
+                                
+                                elements.quantity.focus();
+                                elements.itemName.classList.remove('new-item');
+                            } else {
+                                // Item not found - clear form for new item
+                                clearFormExceptBarcode();
+                                elements.itemName.focus();
+                                elements.itemName.classList.add('new-item');
+                            }
+                        } catch (error) {
+                            console.error('Error fetching item:', error);
+                            clearFormExceptBarcode();
+                            elements.itemName.classList.add('new-item');
+                        }
+                    }
+                }, 500); // Reduced timeout for better responsiveness
+            });
+        
+            // Calculate functions
+                function calculateBuyPrice() {
+                    const pricePerUnit = elements.pricePerUnit ? parseFloat(elements.pricePerUnit.value) || 0 : 0;
+                    // quantityType removed; buyPrice is per unit
+                    if (elements.buyPrice) elements.buyPrice.value = pricePerUnit ? parseFloat(pricePerUnit).toFixed(2) : '';
+                    calculateItemTotal();
+            }
+        
+            // quantityType removed - no listeners required
+        
+            function calculateItemTotal() {
+                const quantity = elements.quantity ? parseFloat(elements.quantity.value) || 0 : 0;
+                const pricePerUnit = elements.pricePerUnit ? parseFloat(elements.pricePerUnit.value) || 0 : 0;
+                if (elements.totalPrice) elements.totalPrice.value = (quantity * pricePerUnit).toFixed(2);
+            }
+        
+            // Event listeners for calculations
+            // Attach listeners only when elements exist
+            [elements.quantity, elements.quantityType, elements.pricePerUnit]
+            .filter(Boolean)
+            .forEach(el => {
+                try { el.addEventListener('input', calculateItemTotal); } catch(e){}
+            });
+
+            if (elements.pricePerUnit) {
+                try { elements.pricePerUnit.addEventListener('input', calculateBuyPrice); } catch(e){}
+            }
+            if (elements.quantityType) {
+                try { elements.quantityType.addEventListener('change', calculateBuyPrice); } catch(e){}
+            }
+        
+            // Helper functions
+            function fillItemDetails(item) {
+                if (!item) return;
+        
+                elements.barcode.value = item.barcode || '';
+                elements.itemName.value = item.name || '';
+                elements.sellPrice.value = item.sell_price || '';
+                elements.categorySelect.value = item.category_id || '';
+                // set defaults
+                elements.pricePerUnit.value = item.buy_price ? parseFloat(item.buy_price).toFixed(2) : '';
+                elements.buyPrice.value = item.buy_price ? parseFloat(item.buy_price).toFixed(2) : '';
+                calculateBuyPrice();
+            }
+        
+            function addRowToTable(item) {
+                try {
+                    const tbody = elements.invoiceItems.querySelector('tbody') || elements.invoiceItems; // Fallback if tbody not found
+                    if (!tbody) {
+                        console.error('Table body not found');
+                        return;
+                    }
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.barcode}</td>
+                        <td>${item.name}</td>
+                        <td><input class="invoice-qty" type="number" min="0" value="${item.quantity}" style="width:80px; padding:6px; border:1px solid #ddd; border-radius:4px;" /></td>
+                        <td><input class="invoice-buy" type="number" step="1" value="${item.buyPrice}" style="width:100px; padding:6px; border:1px solid #ddd; border-radius:4px;" /></td>
+                        <td><input class="invoice-sell" type="number" step="1" value="${item.sellPrice}" style="width:100px; padding:6px; border:1px solid #ddd; border-radius:4px;" /></td>
+                        <td class="row-total">${item.total}</td>
+                        <td>
+
+                            <button class="btn delete-btn" onclick="deleteRow(this)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+
+                    tbody.appendChild(row);
+
+                    // Attach per-row listeners to update totals live
+                    try {
+                        const qtyInput = row.querySelector('.invoice-qty');
+                        const buyInput = row.querySelector('.invoice-buy');
+                        const sellInput = row.querySelector('.invoice-sell');
+                        const rowTotalCell = row.querySelector('.row-total');
+
+                        const updateRow = () => {
+                            const qty = parseFloat(qtyInput.value) || 0;
+                            const buy = parseFloat(buyInput.value) || 0;
+                            if (rowTotalCell) rowTotalCell.textContent = (qty * buy).toFixed(2);
+                            calculateInvoiceTotal();
+                        };
+
+                        if (qtyInput) qtyInput.addEventListener('input', updateRow);
+                        if (buyInput) buyInput.addEventListener('input', updateRow);
+                        if (sellInput) sellInput.addEventListener('input', updateRow);
+
+                        // Tab navigation: move to next row's quantity input
+                        if (qtyInput) {
+                            qtyInput.addEventListener('keydown', function(e) {
+                                if (e.key === 'Tab' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    const currentRow = this.closest('tr');
+                                    const nextRow = currentRow.nextElementSibling;
+                                    if (nextRow) {
+                                        const nextQtyInput = nextRow.querySelector('.invoice-qty');
+                                        if (nextQtyInput) {
+                                            nextQtyInput.focus();
+                                            nextQtyInput.select();
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error attaching row listeners', e);
+                    }
+
+                    verifyRadioButtons();
+                    setupPaymentListeners();
+                    calculateInvoiceTotal();
+                } catch (error) {
+                    console.error('Error adding row:', error);
+                }
+            }
+        
+            function clearForm() {
+                // Get current radio button selections before clearing
+                const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value;
+                const discountType = document.querySelector('input[name="discountType"]:checked')?.value;
+
+                // Clear input fields
+                const inputs = document.querySelectorAll('.item-form input:not([type="radio"])');
+                inputs.forEach(input => input.value = '');
+
+                // Clear category select specifically
+                elements.categorySelect.value = '';
+                
+                // Restore radio button selections if they existed
+                if (paymentType) {
+                    const paymentRadio = document.querySelector(`input[name="paymentType"][value="${paymentType}"]`);
+                    if (paymentRadio) paymentRadio.checked = true;
+                }
+                if (discountType) {
+                    const discountRadio = document.querySelector(`input[name="discountType"][value="${discountType}"]`);
+                    if (discountRadio) discountRadio.checked = true;
+                }
+
+                // Set focus back to barcode
+                elements.barcode.focus();
+            }
+        
+            function clearFormExceptBarcode() {
+                const barcodeValue = elements.barcode ? elements.barcode.value : '';
+                ['itemName', 'quantity', 'pricePerUnit', 'buyPrice', 'sellPrice', 'totalPrice']
+                    .forEach(field => {
+                        if (elements[field]) {
+                            try { elements[field].value = ''; } catch(e) {}
+                        }
+                    });
+                if (elements.quantityType) { try { elements.quantityType.value = '1'; } catch(e) {} }
+                if (elements.barcode) elements.barcode.value = barcodeValue;
+                if (elements.itemName && elements.itemName.classList) elements.itemName.classList.remove('new-item');
+                if (elements.categorySelect) elements.categorySelect.value = '';
+            }
+        
+                window.editRow = function(btn) {
+                const row = btn.closest('tr');
+                const cells = row.cells;
+                
+                elements.barcode.value = cells[0].textContent;
+                elements.itemName.value = cells[1].textContent;
+                    elements.quantity.value = cells[2].querySelector('.invoice-qty') ? cells[2].querySelector('.invoice-qty').value : cells[2].textContent;
+                    elements.buyPrice.value = cells[3].textContent;
+                    elements.sellPrice.value = cells[4].textContent;
+                    elements.totalPrice.value = cells[5].textContent;
+                
+                row.remove();
+                calculateInvoiceTotal();
+            }
+        
+                window.deleteRow = function(btn) {
+                const row = btn.closest('tr');
+                row.remove();
+                calculateInvoiceTotal();
+            }
+        
+            function calculateInvoiceTotal() {
+                let total = 0;
+                const rows = elements.invoiceItems.getElementsByTagName('tr');
+                for (const row of rows) {
+                    // read quantity input if present
+                    const qtyInput = row.querySelector('.invoice-qty');
+                    const qty = qtyInput ? parseFloat(qtyInput.value) || 0 : parseFloat(row.cells[2].textContent) || 0;
+                    const price = parseFloat(row.querySelector('.row-total') ? row.querySelector('.row-total').textContent : row.cells[5].textContent) || 0;
+                    // if row has explicit total cell use it, else calc
+                    const explicitTotalCell = row.querySelector('.row-total');
+                    let rowTotal = 0;
+                    if (explicitTotalCell) {
+                        // row total cell currently holds total value
+                        rowTotal = parseFloat(explicitTotalCell.textContent) || (qty * (parseFloat(row.cells[4].textContent) || 0));
+                    } else {
+                        rowTotal = qty * price;
+                    }
+                    // update row total cell if input changed
+                    if (explicitTotalCell) explicitTotalCell.textContent = rowTotal.toFixed(2);
+                    total += rowTotal;
+                }
+                elements.totalAmount.textContent = total.toFixed(2);
+                // Update final total after calculating new subtotal
+                calculateDiscount();
+            }
+            
+            elements.barcode.focus();
+            // Initialize data
+            loadCategories();
+
+            // --- Items lookup table (load, render, filter, click-to-add) ---
+            let allItems = [];
+
+            async function loadItemsList() {
+                try {
+                    console.log('Requesting /get_items...');
+                    const res = await fetch('/get_items', { credentials: 'same-origin' });
+                    console.log('/get_items status:', res.status, res.statusText);
+                    const contentType = res.headers.get('content-type') || '';
+                    console.log('/get_items content-type:', contentType);
+
+                    if (!res.ok) {
+                        const text = await res.text();
+                        console.error('/get_items returned non-ok:', res.status, text);
+                        // show a visible message in the items table
+                        const tbody = document.getElementById('itemsTableBody');
+                        tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:#a00;">خطأ في تحميل المنتجات: ${res.status} - ${res.statusText}</td></tr>`;
+                        return;
+                    }
+
+                    if (!contentType.includes('application/json')) {
+                        const text = await res.text();
+                        console.error('/get_items returned non-JSON response:', text);
+                        const tbody = document.getElementById('itemsTableBody');
+                        tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:#a00;">استجابة غير متوقعة من الخادم</td></tr>`;
+                        return;
+                    }
+
+                    const data = await res.json();
+                    console.log('/get_items returned items count:', Array.isArray(data) ? data.length : 'not-array');
+                    allItems = Array.isArray(data) ? data : [];
+                    if (!allItems.length) {
+                        const tbody = document.getElementById('itemsTableBody');
+                        tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:#666;">لا توجد منتجات لعرضها</td></tr>`;
+                        return;
+                    }
+                    renderItemsTable(allItems);
+                } catch (err) {
+                    console.error('Failed to load items list (fetch/parsing error):', err);
+                    const tbody = document.getElementById('itemsTableBody');
+                    tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:#a00;">خطأ داخلي في العميل أثناء تحميل المنتجات</td></tr>`;
+                }
+            }
+
+            function renderItemsTable(items) {
+                const tbody = document.getElementById('itemsTableBody');
+                tbody.innerHTML = '';
+                items.forEach((item, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.style.cursor = 'pointer';
+                    tr.dataset.barcode = item.barcode || '';
+                    tr.dataset.index = idx;
+                    const cat = item.category_name || item.category || '';
+                    const qty = item.quantity || item.last_quantity || 0;
+                    tr.innerHTML = `
+                        <td style="padding:6px;border-bottom:1px solid #f0f0f0;">${item.barcode || ''}</td>
+                        <td style="padding:6px;border-bottom:1px solid #f0f0f0;">${item.name || ''}</td>
+                        <td style="padding:6px;border-bottom:1px solid #f0f0f0;">${cat}</td>
+                        <td style="padding:6px;border-bottom:1px solid #f0f0f0;">${qty}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function filterItemsTable(term) {
+                if (!allItems || !allItems.length) {
+                    // Data not loaded yet, don't filter
+                    return;
+                }
+                const q = (term || '').trim();
+                if (!q) {
+                    renderItemsTable(allItems);
+                    return;
+                }
+
+                const searchLower = q.toLowerCase();
+                const isNumericOnly = /^\d+$/.test(q);
+                
+                let filtered;
+                
+                if (isNumericOnly) {
+                    // Numeric search: exact barcode/barcode2 match first
+                    filtered = allItems.filter(item => {
+                        const barcode = (item.barcode || '').toString().toLowerCase();
+                        const barcode2 = (item.barcode2 || '').toString().toLowerCase();
+                        
+                        // Exact match
+                        if (barcode === q || barcode2 === q) return true;
+                        
+                        // Check barcode2 parts
+                        if (barcode2) {
+                            const parts = barcode2.split('(,,)').map(p => p.trim());
+                            if (parts.includes(q)) return true;
+                        }
+                        
+                        return false;
+                    });
+                    
+                    // Fallback to partial match
+                    if (filtered.length === 0) {
+                        filtered = allItems.filter(item => {
+                            const barcode = (item.barcode || '').toString().toLowerCase();
+                            const barcode2 = (item.barcode2 || '').toString().toLowerCase();
+                            return barcode.includes(searchLower) || barcode2.includes(searchLower);
+                        });
+                    }
+                } else {
+                    // Text search: flexible word matching
+                    const searchWords = searchLower.split(/\s+/).filter(w => w.length > 0);
+                    
+                    filtered = allItems.filter(item => {
+                        const name = (item.name || '').toString().toLowerCase();
+                        const barcode = (item.barcode || '').toString().toLowerCase();
+                        const barcode2 = (item.barcode2 || '').toString().toLowerCase();
+                        
+                        // Check barcodes for mixed alphanumeric
+                        if (barcode.includes(searchLower) || barcode2.includes(searchLower)) {
+                            return true;
+                        }
+                        
+                        // Check if all search words exist in name (any order)
+                        const allWordsFound = searchWords.every(word => name.includes(word));
+                        if (allWordsFound) return true;
+                        
+                        // Also check barcode2 parts
+                        if (barcode2) {
+                            const parts = barcode2.split('(,,)').map(p => p.trim().toLowerCase()).filter(Boolean);
+                            if (parts.some(p => p.includes(searchLower))) return true;
+                        }
+                        
+                        return false;
+                    });
+                }
+                
+                renderItemsTable(filtered);
+            }
+
+            // Wire input on barcode to filter lookup table (fast UI)
+            elements.barcode.addEventListener('input', function(e) {
+                filterItemsTable(this.value);
+            });
+
+            // Click-to-add handler (delegate)
+            const itemsTableBody = document.getElementById('itemsTableBody');
+            itemsTableBody.addEventListener('click', function(e) {
+                const tr = e.target.closest('tr');
+                if (!tr) return;
+                const barcode = tr.dataset.barcode;
+                // find item by barcode from allItems
+                const item = allItems.find(it => (it.barcode || '').toString() === (barcode || '').toString());
+                if (!item) return;
+
+                // behave like autocomplete select: if exists increment, else add row
+                const existingRows = elements.invoiceItems.getElementsByTagName('tr');
+                for (const r of existingRows) {
+                    const rowBarcode = r.cells[0]?.textContent?.trim();
+                    if (rowBarcode === item.barcode) {
+                        const qtyInput = r.querySelector('.invoice-qty');
+                        if (qtyInput) {
+                            qtyInput.value = (parseFloat(qtyInput.value) || 0) + 1;
+                            const buyInput = r.querySelector('.invoice-buy');
+                            const rowTotalCell = r.querySelector('.row-total');
+                            const qty = parseFloat(qtyInput.value) || 0;
+                            const buy = parseFloat(buyInput?.value) || parseFloat(r.cells[3].textContent) || 0;
+                            if (rowTotalCell) rowTotalCell.textContent = (qty * buy).toFixed(2);
+                            calculateInvoiceTotal();
+                        }
+                        return;
+                    }
+                }
+
+                const invoiceItem = {
+                    barcode: item.barcode,
+                    name: item.name,
+                    quantity: 1,
+                    buyPrice: item.buy_price || 0,
+                    sellPrice: item.sell_price || 0,
+                    total: (1 * (item.buy_price || 0)).toFixed(2)
+                };
+                addRowToTable(invoiceItem);
+            });
+
+            // initial load of items into lookup
+            loadItemsList();
+            
+            // Global keyboard navigation for invoice table
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                    const activeElement = document.activeElement;
+                    if (!activeElement) return;
+                    
+                    const row = activeElement.closest('tr');
+                    if (!row || !row.closest('.invoice-items-section')) return;
+                    
+                    const inputs = row.querySelectorAll('.invoice-qty, .invoice-buy, .invoice-sell');
+                    let currentIndex = -1;
+                    
+                    for (let i = 0; i < inputs.length; i++) {
+                        if (inputs[i] === activeElement) {
+                            currentIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (currentIndex === -1) return; // Active element is not one of the inputs
+                    
+                    if (e.key === 'ArrowRight') {
+                        // Move to previous input
+                        if (currentIndex > 0) {
+                            inputs[currentIndex - 1].focus();
+                            inputs[currentIndex - 1].select();
+                            e.preventDefault();
+                        }
+                    } else if (e.key === 'ArrowLeft') {
+                        // Move to next input
+                        if (currentIndex < inputs.length - 1) {
+                            inputs[currentIndex + 1].focus();
+                            inputs[currentIndex + 1].select();
+                            e.preventDefault();
+                        }
+                    }
+                }
+            });
+            
+            // Barcode no longer uses autocomplete dropdown; use items table below for selection.
+            function validateItemBeforeAdd() {
+                // First check required fields
+                const requiredFields = {
+                    'barcode': 'الباركود',
+                    'itemName': 'اسم المنتج',
+                    'quantity': 'الكمية',
+                    'pricePerUnit': 'السعر لكل وحدة',
+                    'sellPrice': 'سعر البيع'
+                };
+        
+                for (const [field, label] of Object.entries(requiredFields)) {
+                    if (!elements[field].value.trim()) {
+                        alert(`الرجاء إدخال ${label}`);
+                        elements[field].focus();
+                        return false;
+                    }
+                }
+        
+                // If it's a new item, ask for confirmation
+                if (elements.itemName.classList.contains('new-item')) {
+                    const confirmAdd = confirm(`هذا منتج جديد سيتم إضافته للمخزون:\nالباركود: ${elements.barcode.value}\nالاسم: ${elements.itemName.value}\nهل تريد المتابعة؟`);
+                    if (!confirmAdd) {
+                        return false;
+                    }
+                    
+                    // Here you might want to save the new item to your database
+                    saveNewItem({
+                        barcode: elements.barcode.value,
+                        name: elements.itemName.value,
+                        buy_price: elements.buyPrice.value,
+                        sell_price: elements.sellPrice.value
+                    });
+                }
+        
+                return true;
+            }
+        
+            async function saveNewItem(item) {
+                try {
+                    const response = await fetch('/save_new_item', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            ...item,
+                            category_id: elements.categorySelect.value
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to save new item');
+                    }
+
+                    elements.itemName.classList.remove('new-item');
+                } catch (error) {
+                    console.error('Error saving new item:', error);
+                    alert('حدث خطأ أثناء حفظ المنتج الجديد');
+                }
+            }
+  
+        });
+
+        
+</script>
+{% endblock %}

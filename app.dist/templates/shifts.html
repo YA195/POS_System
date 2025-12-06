@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}الورديات{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/shifts.css') }}">
+  
+    
+<!-- Shifts List -->
+<div class="shifts-list">
+    {% for shift in shifts %}
+    <div class="shift-card" onclick="loadShiftDetails('{{ shift.id }}')">
+        <div class="shift-header">
+            <span class="shift-number">رقم الوردية: {{ shift.id }}</span>
+            <span class="cashier">الكاشير: {{ shift.cashier_name }}</span>
+            <span class="time">من: {{ shift.start_time.strftime('%Y-%m-%d %I:%M %p') if shift.start_time else '' }}</span>
+            {% if shift.end_time %}
+            <span class="time">إلى: {{ shift.end_time.strftime('%Y-%m-%d %I:%M %p') }}</span>
+            {% endif %}
+            <span class="status {{ shift.status|lower }}">{{ 'نشط' if shift.status == 'active' else 'مغلق' }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+    <!-- Shift Details Modal -->
+    <div id="shiftDetailsModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <h2>تفاصيل الوردية</h2>
+            <div class="shift-details">
+                <!-- Summary -->
+                <div class="summary-section">
+                    <h3>الملخص</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span>إجمالي المبيعات:</span>
+                            <span id="totalSales">0.00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>المصروفات:</span>
+                            <span id="totalExpenses">0.00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>المرتجعات:</span>
+                            <span id="totalReturns">0.00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>الفواتير:</span>
+                            <span id="totalInvoices">0.00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-summary">
+                        <div class="payment-item">
+                            <span>كاش:</span>
+                            <span id="cashAmount">0.00</span>
+                        </div>
+                        <div class="payment-item">
+                            <span>فيزا:</span>
+                            <span id="visaAmount">0.00</span>
+                        </div>
+                        <div class="payment-item">
+                            <span>محفظة:</span>
+                            <span id="ewalletAmount">0.00</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Cash Boxes Summary -->
+                    <div class="cash-boxes-summary" id="cashBoxesSummary" style="margin-top: 15px;">
+                        <h4>الصناديق:</h4>
+                        <div id="cashBoxesList" class="payment-summary">
+                            <!-- Cash boxes will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="showTab('sales')">المبيعات</button>
+                    <button class="tab-btn" onclick="showTab('expenses')">المصروفات</button>
+                    <button class="tab-btn" onclick="showTab('returns')">المرتجعات</button>
+                    <button class="tab-btn" onclick="showTab('invoices')">الفواتير</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="salesTab" class="tab-content active">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>التوقيت</th>
+                                    <th>القيمة</th>
+                                    <th>طريقة الدفع</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="expensesTab" class="tab-content">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>الوصف</th>
+                                    <th>القيمة</th>
+                                    <th>التوقيت</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expensesList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="returnsTab" class="tab-content">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>القيمة</th>
+                                    <th>السبب</th>
+                                    <th>التوقيت</th>
+                                </tr>
+                            </thead>
+                            <tbody id="returnsList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="invoicesTab" class="tab-content">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>المورد</th>
+                                    <th>القيمة</th>
+                                    <th>التوقيت</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoicesList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this to your static/js folder -->
+<script src="{{ url_for('static', filename='js/shifts.js') }}"></script>
+{% endblock %}

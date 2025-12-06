@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}سجل النشاطات{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/activity_logs.css') }}?v=3">
+{% endblock %}
+
+{% block content %}
+<div class="logs-container">
+    <h1>سجل النشاطات</h1>
+    
+    <!-- Filters -->
+    <div class="filters-section">
+        <div class="filter-group">
+            <label>من تاريخ:</label>
+            <input type="date" id="startDate" class="form-control" onchange="applyFilters()">
+        </div>
+        
+        <div class="filter-group">
+            <label>إلى تاريخ:</label>
+            <input type="date" id="endDate" class="form-control" onchange="applyFilters()">
+        </div>
+        
+        <div class="filter-group">
+            <label>المستخدم:</label>
+            <select id="userFilter" class="form-control" onchange="applyFilters()">
+                <option value="">الكل</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label>نوع العملية:</label>
+            <select id="actionFilter" class="form-control" onchange="applyFilters()">
+                <option value="">الكل</option>
+                <option value="create">إضافة</option>
+                <option value="update">تعديل</option>
+                <option value="delete">حذف</option>
+                <option value="sale">بيع</option>
+                <option value="return">مرتجع</option>
+                <option value="invoice">فاتورة</option>
+                <option value="expense">مصروف</option>
+                <option value="shift_open">فتح وردية</option>
+                <option value="shift_close">إغلاق وردية</option>
+                <option value="transfer">تحويل صندوق</option>
+                <option value="deposit">إيداع</option>
+                <option value="withdraw">سحب</option>
+                <option value="login">تسجيل دخول</option>
+                <option value="logout">تسجيل خروج</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label>الجدول:</label>
+            <select id="tableFilter" class="form-control" onchange="applyFilters()">
+                <option value="">الكل</option>
+                <option value="sales">المبيعات</option>
+                <option value="daily_sales">المبيعات اليومية</option>
+                <option value="invoices">الفواتير</option>
+                <option value="expenses">المصروفات</option>
+                <option value="shifts">الورديات</option>
+                <option value="items">الأصناف</option>
+                <option value="traders">التجار</option>
+                <option value="categories">الفئات</option>
+                <option value="companies">الشركات</option>
+                <option value="cash_box_transfers">تحويلات الصناديق</option>
+                <option value="sale_returns">مرتجعات المبيعات</option>
+                <option value="users">المستخدمين</option>
+            </select>
+        </div>
+        
+        <div class="filter-actions">
+            <button class="btn btn-secondary" onclick="resetFilters()">
+                <i class="fas fa-redo"></i> إعادة تعيين
+            </button>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="stats-section">
+        <div class="stat-card">
+            <div class="stat-value" id="totalLogs">0</div>
+            <div class="stat-label">إجمالي السجلات</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="todayLogs">0</div>
+            <div class="stat-label">اليوم</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="activeUsers">0</div>
+            <div class="stat-label">المستخدمين النشطين</div>
+        </div>
+    </div>
+    
+    <!-- Logs Table -->
+    <div class="table-container">
+        <table class="logs-table">
+            <thead>
+                <tr>
+                    <th>الوقت</th>
+                    <th>المستخدم</th>
+                    <th>نوع العملية</th>
+                    <th>الجدول</th>
+                    <th>رقم السجل</th>
+                    <th>الوصف</th>
+                    <th>IP Address</th>
+                </tr>
+            </thead>
+            <tbody id="logsTableBody">
+                <tr>
+                    <td colspan="7" class="text-center">جاري التحميل...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    <div class="pagination-section">
+        <button class="btn btn-sm" onclick="previousPage()" id="prevBtn" disabled>
+            <i class="fas fa-chevron-right"></i> السابق
+        </button>
+        <span id="pageInfo">صفحة 1 من 1</span>
+        <button class="btn btn-sm" onclick="nextPage()" id="nextBtn" disabled>
+            التالي <i class="fas fa-chevron-left"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let totalPages = 1;
+const logsPerPage = 50;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default dates - last 7 days INCLUDING today
+    // Use local date to avoid timezone issues
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to midnight
+    
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    // Format dates as YYYY-MM-DD for input[type="date"]
+    const todayStr = formatDateForInput(today);
+    const weekAgoStr = formatDateForInput(weekAgo);
+    
+    document.getElementById('startDate').value = weekAgoStr;
+    document.getElementById('endDate').value = todayStr;
+    
+    console.log('Date range set:', weekAgoStr, 'to', todayStr);
+    
+    loadUsers();
+    loadLogs();
+    loadStats();
+});
+
+function formatDateForInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+async function loadUsers() {
+    try {
+        const response = await fetch('/get_users');
+        const data = await response.json();
+        
+        const select = document.getElementById('userFilter');
+        data.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.username;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+async function loadLogs() {
+    try {
+        const params = new URLSearchParams({
+            page: currentPage,
+            limit: logsPerPage,
+            start_date: document.getElementById('startDate').value,
+            end_date: document.getElementById('endDate').value,
+            user_id: document.getElementById('userFilter').value,
+            action_type: document.getElementById('actionFilter').value,
+            table_name: document.getElementById('tableFilter').value
+        });
+        
+        console.log('Loading logs with params:', Object.fromEntries(params));
+        
+        const response = await fetch(`/get_activity_logs?${params}`);
+        const data = await response.json();
+        
+        console.log('Received data:', data);
+        
+        if (data.success) {
+            displayLogs(data.logs);
+            totalPages = data.total_pages;
+            updatePagination();
+        } else {
+            showError('فشل تحميل السجلات');
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        showError('حدث خطأ أثناء تحميل السجلات');
+    }
+}
+
+function displayLogs(logs) {
+    const tbody = document.getElementById('logsTableBody');
+    
+    if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">لا توجد سجلات</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = logs.map(log => `
+        <tr>
+            <td>${formatDateTime(log.created_at)}</td>
+            <td><span class="user-badge">${log.username || 'غير معروف'}</span></td>
+            <td><span class="action-badge action-${log.action_type}">${getActionLabel(log.action_type)}</span></td>
+            <td>${getTableLabel(log.table_name)}</td>
+            <td>${log.record_id || '-'}</td>
+            <td class="description-cell">${log.description || '-'}</td>
+            <td class="ip-cell">${log.ip_address || '-'}</td>
+        </tr>
+    `).join('');
+}
+
+async function loadStats() {
+    try {
+        const response = await fetch('/get_activity_stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('totalLogs').textContent = data.total_logs;
+            document.getElementById('todayLogs').textContent = data.today_logs;
+            document.getElementById('activeUsers').textContent = data.active_users;
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+function applyFilters() {
+    currentPage = 1;
+    loadLogs();
+}
+
+function resetFilters() {
+    // Reset to last 7 days including today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    document.getElementById('startDate').value = formatDateForInput(weekAgo);
+    document.getElementById('endDate').value = formatDateForInput(today);
+    document.getElementById('userFilter').value = '';
+    document.getElementById('actionFilter').value = '';
+    document.getElementById('tableFilter').value = '';
+    
+    currentPage = 1;
+    loadLogs();
+}
+
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        loadLogs();
+    }
+}
+
+function nextPage() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        loadLogs();
+    }
+}
+
+function updatePagination() {
+    document.getElementById('pageInfo').textContent = `صفحة ${currentPage} من ${totalPages}`;
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = currentPage === totalPages;
+}
+
+function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleString('ar-EG', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getActionLabel(action) {
+    const labels = {
+        'create': 'إضافة',
+        'update': 'تعديل',
+        'delete': 'حذف',
+        'sale': 'بيع',
+        'return': 'مرتجع',
+        'invoice': 'فاتورة',
+        'expense': 'مصروف',
+        'shift_open': 'فتح وردية',
+        'shift_close': 'إغلاق وردية',
+        'transfer': 'تحويل',
+        'deposit': 'إيداع',
+        'withdraw': 'سحب',
+        'login': 'تسجيل دخول',
+        'logout': 'تسجيل خروج'
+    };
+    return labels[action] || action;
+}
+
+function getTableLabel(table) {
+    const labels = {
+        'sales': 'المبيعات',
+        'daily_sales': 'المبيعات اليومية',
+        'invoices': 'الفواتير',
+        'expenses': 'المصروفات',
+        'shifts': 'الورديات',
+        'items': 'الأصناف',
+        'traders': 'التجار',
+        'categories': 'الفئات',
+        'companies': 'الشركات',
+        'cash_box_transfers': 'تحويلات الصناديق',
+        'sale_returns': 'مرتجعات المبيعات',
+        'daily_sale_returns': 'مرتجعات المبيعات اليومية'
+    };
+    return labels[table] || table || '-';
+}
+
+function showError(message) {
+    alert(message);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}الشركات - Supermarket POS{% endblock %}
+
+{% block head %}
+
+{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='items.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='categories.css') }}">
+<div class="companies-container">
+    <div class="search-form">
+        <input type="text" id="searchInput" placeholder="البحث باسم الشركة">
+    </div>
+
+    <div class="item-form">
+        <input type="text" id="companyId" readonly hidden>
+        <input type="text" id="name" placeholder="اسم الشركة">
+        <input type="text" id="phone" placeholder="رقم الهاتف">
+        
+        <button class="btn save-btn" id="saveBtn" disabled><i class="fas fa-save"></i></button>
+        <button class="btn delete-btn" id="deleteBtn" disabled><i class="fas fa-trash"></i></button>
+    </div>
+
+    <div class="items-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم الشركة</th>
+                    <th>رقم الهاتف</th>
+                </tr>
+            </thead>
+            <tbody id="companiesTableBody">
+                {% for company in companies %}
+                <tr data-company='{{ company|tojson }}' onclick="selectCompany(this)">
+                    <td>{{ company.name }}</td>
+                    <td>{{ company.phone }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('name').focus();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    document.getElementById('searchInput').addEventListener('input', handleSearch);
+    document.getElementById('saveBtn').addEventListener('click', handleSave);
+    document.getElementById('deleteBtn').addEventListener('click', handleDelete);
+    ['name', 'phone'].forEach(field => {
+        document.getElementById(field).addEventListener('input', () => validateForm());
+    });
+}
+
+function handleSearch(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#companiesTableBody tr');
+    rows.forEach(row => {
+        const name = row.cells[0].textContent.toLowerCase();
+        row.style.display = name.includes(searchTerm) ? '' : 'none';
+    });
+}
+
+function selectCompany(row) {
+    const company = JSON.parse(row.dataset.company);
+    document.getElementById('companyId').value = company.id;
+    document.getElementById('name').value = company.name;
+    document.getElementById('phone').value = company.phone;
+    validateForm();
+}
+
+function validateForm(showAlerts = false) {
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const isValid = name && phone;
+
+    if (showAlerts && !isValid) {
+        alert("يجب ملء جميع الحقول");
+        return false;
+    }
+
+    document.getElementById('saveBtn').disabled = !isValid;
+    document.getElementById('deleteBtn').disabled = !isValid;
+    return isValid;
+}
+
+function clearFields() {
+    ['companyId', 'name', 'phone'].forEach(field => {
+        document.getElementById(field).value = '';
+    });
+    document.getElementById('saveBtn').disabled = true;
+    document.getElementById('deleteBtn').disabled = true;
+}
+
+function updateTable() {
+    fetch('/get_companies')
+        .then(response => response.json())
+        .then(companies => {
+            const tbody = document.getElementById('companiesTableBody');
+            tbody.innerHTML = companies.map(company => `
+                <tr data-company='${JSON.stringify(company)}' onclick="selectCompany(this)">
+                    <td>${company.name}</td>
+                    <td>${company.phone}</td>
+                </tr>
+            `).join('');
+        });
+}
+
+function handleSave() {
+    if (!validateForm(true)) return;
+
+    const companyData = {
+        id: document.getElementById('companyId').value,
+        name: document.getElementById('name').value.trim(),
+        phone: document.getElementById('phone').value.trim()
+    };
+
+    const method = companyData.id ? 'PUT' : 'POST';
+    const endpoint = companyData.id ? `/update_company/${companyData.id}` : '/save_company';
+
+    fetch(endpoint, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(companyData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTable();
+            clearFields();
+            document.getElementById('name').focus();
+        } else {
+            alert(data.message || 'Failed to save company');
+        }
+    });
+}
+
+function handleDelete() {
+    const companyId = document.getElementById('companyId').value;
+    if (!companyId || !confirm("هل أنت متأكد من حذف هذه الشركة؟")) return;
+
+    fetch(`/delete_company/${companyId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateTable();
+            clearFields();
+        }
+    });
+}
+</script>
+{% endblock %}

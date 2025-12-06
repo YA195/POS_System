@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/inventory_audit.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jquery-ui.min.css') }}">
+
+<div class="inventory-audit-container" data-can-approve="{{ 'approve_inventory_audit' in session.get('permissions', []) }}">
+    <div class="page-header">
+        <h1>جرد الأصناف</h1>
+        <p>عملية جرد المخزون الحالي</p>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="search-row">
+            <div class="search-group">
+                <label for="categoryFilter">التصنيف:</label>
+                <select id="categoryFilter" class="search-input">
+                    <option value="">كل التصنيفات</option>
+                </select>
+            </div>
+            <div class="search-group">
+                <label for="itemSearch">البحث في الأصناف (باركود أو اسم):</label>
+                <input type="text" id="itemSearch" placeholder="اكتب للبحث في الأصناف..." class="search-input">
+            </div>
+            <button id="saveAudit" class="btn-save">
+                <i class="fas fa-save"></i>
+                حفظ الجرد
+            </button>
+        </div>
+    </div>
+
+    <!-- Audit Table -->
+    <div class="audit-section">
+        <div class="table-container">
+            <table id="auditTable" class="audit-table">
+                <thead>
+                    <tr>
+                        <th>الباركود</th>
+                        <th>اسم الصنف</th>
+                        <th>الكمية الحالية</th>
+                        <th>الكمية الفعلية</th>
+                        <th>العجز</th>
+                        <th>الزيادة</th>
+                        <th>الإجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="auditTableBody">
+                    <!-- Rows will be added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>جاري التحميل...</p>
+        </div>
+
+        <!-- No data message -->
+        <div id="noDataMessage" class="no-data-message" style="display: block;">
+            <i class="fas fa-inbox"></i>
+            <h3>لا توجد أصناف</h3>
+            <p>ابحث عن صنف وأضفه للبدء في عملية الجرد</p>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-section" id="actionSection" style="display: none;">
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            تأكيد اعتماد الجرد
+        </div>
+        <div class="modal-body">
+            <p>هل تريد اعتماد الجرد؟ سيتم تحديث الكميات بالقيم الفعلية.</p>
+            <div class="audit-summary" id="auditSummary">
+                <!-- Summary will be shown here -->
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button id="confirmApprove" class="btn-confirm">نعم، اعتماد</button>
+            <button id="cancelApprove" class="btn-cancel">إلغاء</button>
+        </div>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/jquery-3.7.1.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/jquery-ui.min.js') }}"></script>
+
+<script>
+window.addEventListener('load', function() {
+    const itemSearch = document.getElementById('itemSearch');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const saveAuditBtn = document.getElementById('saveAudit');
+    const auditTableBody = document.getElementById('auditTableBody');
+    const auditTable = document.getElementById('auditTable');
+    const noDataMessage = document.getElementById('noDataMessage');
+    const actionSection = document.getElementById('actionSection');
+
+    let auditItems = [];
+    let filteredItems = [];
+    let modifiedItems = new Set(); // Track which items had their actual_quantity modified
+
+    function showLoading() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const auditTable = document.getElementById('auditTable');
+        const noDataMessage = document.getElementById('noDataMessage');
+        loadingIndicator.style.display = 'block';
+        auditTable.style.display = 'none';
+        noDataMessage.style.display = 'none';
+    }
+
+    function hideLoading() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        loadingIndicator.style.display = 'none';
+    }
+
+    function showNoData() {
+        const auditTable = document.getElementById('auditTable');
+        const noDataMessage = document.getElementById('noDataMessage');
+        auditTable.style.display = 'none';
+        noDataMessage.style.display = 'flex';
+    }
+
+    // Load categories
+    function loadCategories() {
+        fetch('/get_categories')
+            .then(response => response.json())
+            .then(categories => {
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.name;
+                    categoryFilter.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading categories:', error);
+            });
+    }
+
+    function loadAllItems() {
+        showLoading();
+        const categoryId = categoryFilter.value;
+        const url = categoryId ? `/get_all_items_for_audit?category_id=${categoryId}` : '/get_all_items_for_audit';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(items => {
+                auditItems = items.map(item => ({
+                    id: item.id,
+                    barcode: item.barcode,
+                    name: item.name,
+                    current_quantity: item.quantity,
+                    actual_quantity: item.quantity,
+                    shortage: 0,
+                    excess: 0,
+                    category_id: item.category_id
+                }));
+                filteredItems = [...auditItems];
+                modifiedItems.clear(); // Clear modified items when loading new category
+                renderAuditTable();
+                hideLoading();
+            })
+            .catch(error => {
+                console.error('Error loading items:', error);
+                alert('حدث خطأ في تحميل الأصناف');
+                hideLoading();
+            });
+    }
+
+    // Load categories and items on page load
+    loadCategories();
+    loadAllItems();
+
+    // Category filter change event
+    categoryFilter.addEventListener('change', loadAllItems);
+
+    // Filter items based on search input
+    function filterItems() {
+        const searchTerm = itemSearch.value.trim();
+        if (!searchTerm) {
+            filteredItems = [...auditItems];
+            renderAuditTable();
+            return;
+        }
+
+        const searchLower = searchTerm.toLowerCase();
+        const isNumericOnly = /^\d+$/.test(searchTerm);
+
+        if (isNumericOnly) {
+            // Numeric search: exact barcode match first
+            filteredItems = auditItems.filter(item => {
+                const barcode = (item.barcode || '').toString().toLowerCase();
+                return barcode === searchTerm;
+            });
+
+            // Fallback to partial match
+            if (filteredItems.length === 0) {
+                filteredItems = auditItems.filter(item => {
+                    const barcode = (item.barcode || '').toString().toLowerCase();
+                    return barcode.includes(searchLower);
+                });
+            }
+        } else {
+            // Text search: flexible word matching
+            const searchWords = searchLower.split(/\s+/).filter(w => w.length > 0);
+
+            filteredItems = auditItems.filter(item => {
+                const barcode = (item.barcode || '').toString().toLowerCase();
+                const name = (item.name || '').toString().toLowerCase();
+
+                // Check barcode for mixed alphanumeric
+                if (barcode.includes(searchLower)) {
+                    return true;
+                }
+
+                // Check if all search words exist in name (any order)
+                const allWordsFound = searchWords.every(word => name.includes(word));
+                return allWordsFound;
+            });
+        }
+
+        renderAuditTable();
+    }
+
+    // Search input event listener for real-time filtering
+    itemSearch.addEventListener('input', filterItems);
+
+    function addItemBySearch(searchTerm) {
+        fetch(`/get_item/${searchTerm}`)
+            .then(response => response.json())
+            .then(item => {
+                if (item.error) {
+                    alert('الصنف غير موجود');
+                    return;
+                }
+                addItemToAudit(item);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ في البحث عن الصنف');
+            });
+    }
+
+    function addItemToAudit(item) {
+        // Check if item already exists
+        if (auditItems.some(auditItem => auditItem.id === item.id)) {
+            alert('الصنف موجود بالفعل في قائمة الجرد');
+            return;
+        }
+
+        const auditItem = {
+            id: item.id,
+            barcode: item.barcode,
+            name: item.name,
+            current_quantity: item.quantity,
+            actual_quantity: item.quantity, // Default to current
+            shortage: 0,
+            excess: 0
+        };
+
+        auditItems.push(auditItem);
+        renderAuditTable();
+        itemSearch.value = '';
+    }
+
+    function renderAuditTable() {
+        auditTableBody.innerHTML = '';
+
+        if (filteredItems.length === 0) {
+            auditTable.style.display = 'none';
+            if (auditItems.length === 0) {
+                noDataMessage.style.display = 'flex';
+            } else {
+                noDataMessage.style.display = 'none';
+                // Show message that no items match the search
+                const noResultsMessage = document.createElement('div');
+                noResultsMessage.className = 'no-data-message';
+                noResultsMessage.innerHTML = `
+                    <i class="fas fa-search"></i>
+                    <h3>لا توجد نتائج</h3>
+                    <p>لا توجد أصناف تطابق البحث</p>
+                `;
+                auditTableBody.parentNode.appendChild(noResultsMessage);
+            }
+            actionSection.style.display = 'none';
+            return;
+        }
+
+        filteredItems.forEach((item, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td data-label="الباركود">${item.barcode}</td>
+                <td data-label="اسم الصنف">${item.name}</td>
+                <td data-label="الكمية الحالية">${item.current_quantity}</td>
+                <td data-label="الكمية الفعلية"><input type="number" class="quantity-input" value="${item.actual_quantity}" data-index="${index}"></td>
+                <td class="shortage-cell" data-label="العجز">${item.shortage}</td>
+                <td class="excess-cell" data-label="الزيادة">${item.excess}</td>
+                <td data-label="الإجراء">
+                    <div class="table-actions">
+                        <button class="remove-btn" data-index="${index}">حذف</button>
+                    </div>
+                </td>
+            `;
+            auditTableBody.appendChild(row);
+        });
+
+        auditTable.style.display = 'table';
+        noDataMessage.style.display = 'none';
+        actionSection.style.display = 'flex';
+
+        // Add event listeners for quantity inputs and remove buttons
+        document.querySelectorAll('.quantity-input').forEach(input => {
+            input.addEventListener('input', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                const item = filteredItems[index];
+                modifiedItems.add(item.id); // Mark this item as modified
+                updateCalculations();
+            });
+        });
+
+        document.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                const itemToRemove = filteredItems[index];
+                const originalIndex = auditItems.findIndex(item => item.id === itemToRemove.id);
+                if (originalIndex !== -1) {
+                    auditItems.splice(originalIndex, 1);
+                    filterItems();
+                }
+            });
+        });
+    }
+
+    function updateCalculations() {
+        document.querySelectorAll('.quantity-input').forEach((input, filteredIndex) => {
+            const actualQty = parseInt(input.value) || 0;
+            const item = filteredItems[filteredIndex];
+            const auditIndex = auditItems.findIndex(auditItem => auditItem.id === item.id);
+
+            if (auditIndex !== -1) {
+                const currentQty = auditItems[auditIndex].current_quantity;
+                auditItems[auditIndex].actual_quantity = actualQty;
+                auditItems[auditIndex].shortage = Math.max(0, currentQty - actualQty);
+                auditItems[auditIndex].excess = Math.max(0, actualQty - currentQty);
+
+                // Update display
+                const row = input.closest('tr');
+                row.querySelector('.shortage-cell').textContent = auditItems[auditIndex].shortage;
+                row.querySelector('.excess-cell').textContent = auditItems[auditIndex].excess;
+            }
+        });
+    }
+
+    // Save audit
+    saveAuditBtn.addEventListener('click', function() {
+        // Filter only modified items
+        const modifiedAuditItems = auditItems.filter(item => modifiedItems.has(item.id));
+        
+        if (modifiedAuditItems.length === 0) {
+            alert('لا توجد أصناف تم تعديل كمياتها الفعلية للحفظ');
+            return;
+        }
+
+        // Check if user has permission to approve
+        const canApprove = document.querySelector('.inventory-audit-container').dataset.canApprove === 'True';
+        
+        if (canApprove) {
+            // Show confirmation dialog
+            const approveModal = document.createElement('div');
+            approveModal.className = 'modal';
+            approveModal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        حفظ واعتماد الجرد
+                    </div>
+                    <div class="modal-body">
+                        <p>هل تريد اعتماد الجرد وتحديث كميات الأصناف؟</p>
+                        <div class="audit-summary" id="saveAuditSummary">
+                            <!-- Summary will be shown here -->
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="saveOnlyBtn" class="btn-save-only">حفظ فقط</button>
+                        <button id="saveAndApproveBtn" class="btn-confirm">حفظ واعتماد</button>
+                        <button id="cancelSaveBtn" class="btn-cancel">إلغاء</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(approveModal);
+            approveModal.style.display = 'block';
+
+            // Show summary
+            showAuditSummary(modifiedAuditItems);
+
+            // Handle buttons
+            document.getElementById('saveOnlyBtn').addEventListener('click', function() {
+                saveAudit(false, modifiedAuditItems);
+                approveModal.remove();
+            });
+
+            document.getElementById('saveAndApproveBtn').addEventListener('click', function() {
+                saveAudit(true, modifiedAuditItems);
+                approveModal.remove();
+            });
+
+            document.getElementById('cancelSaveBtn').addEventListener('click', function() {
+                approveModal.remove();
+            });
+
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === approveModal) {
+                    approveModal.remove();
+                }
+            });
+        } else {
+            // User can't approve, just save
+            saveAudit(false, modifiedAuditItems);
+        }
+    });
+
+    function showAuditSummary(itemsToShow) {
+        const summaryDiv = document.getElementById('saveAuditSummary');
+        const totalItems = itemsToShow.length;
+        const totalShortage = itemsToShow.reduce((sum, item) => sum + item.shortage, 0);
+        const totalExcess = itemsToShow.reduce((sum, item) => sum + item.excess, 0);
+        
+        summaryDiv.innerHTML = `
+            <div class="summary-item">
+                <strong>عدد الأصناف المعدلة:</strong> ${totalItems}
+            </div>
+            <div class="summary-item">
+                <strong>إجمالي العجز:</strong> ${totalShortage}
+            </div>
+            <div class="summary-item">
+                <strong>إجمالي الزيادة:</strong> ${totalExcess}
+            </div>
+        `;
+    }
+
+    function saveAudit(approve, modifiedAuditItems) {
+        const itemsToSave = modifiedAuditItems.map(item => ({
+            id: item.id,
+            barcode: item.barcode,
+            name: item.name,
+            current_quantity: item.current_quantity,
+            actual_quantity: item.actual_quantity,
+            shortage: item.shortage,
+            excess: item.excess
+        }));
+
+        fetch('/save_inventory_audit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                items: itemsToSave,
+                approve: approve
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const message = approve ? 'تم حفظ واعتماد الجرد بنجاح' : 'تم حفظ الجرد بنجاح';
+                alert(message);
+                
+                if (approve) {
+                    // Reload the items to show updated quantities
+                    loadAllItems();
+                } else {
+                    // Clear modified items and reload
+                    modifiedItems.clear();
+                    loadAllItems();
+                }
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving audit:', error);
+            alert('حدث خطأ في حفظ الجرد');
+        });
+    }
+
+});
+</script>
+
+{% endblock %}
