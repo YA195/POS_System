@@ -1,0 +1,667 @@
+/* Common container styles */
+.items-container,
+.traders-container {
+    padding: 25px;
+    background: #f8f9fa;
+}
+
+/* Common form styles */
+.item-form,
+.trader-form {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 98%;
+}
+
+/* Form Group Styling */
+.item-form .form-group {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+/* Common input and select styles */
+.item-form input, 
+.item-form select,
+.trader-form input,
+.trader-form select {
+    flex: 1;
+    min-width: 160px;
+    max-width: 200px;
+    padding: 12px 18px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    height: 50px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    background-color: #ffffff;
+    color: #2c3e50;
+}
+
+/* Updated input and select styles for item-form */
+.item-form input,
+.item-form select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+/* Common placeholder styles */
+.item-form input::placeholder,
+.trader-form input::placeholder {
+    color: #adb5bd;
+    font-size: 14px;
+}
+
+/* Placeholder Visibility */
+.form-group input::placeholder {
+    color: transparent;
+}
+
+/* Common focus states */
+.item-form input:focus, 
+.item-form select:focus,
+.trader-form input:focus,
+.trader-form select:focus {
+    border-color: #4dabf7;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(77, 171, 247, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Input Focus State */
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.2);
+    outline: none;
+}
+
+/* Common hover states */
+.item-form input:hover, 
+.item-form select:hover,
+.trader-form input:hover,
+.trader-form select:hover {
+    border-color: #4dabf7;
+    background-color: #f8f9fa;
+}
+
+/* Common select styles */
+.item-form select,
+.trader-form select {
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, #adb5bd 50%),
+                      linear-gradient(135deg, #adb5bd 50%, transparent 50%);
+    background-position: 10px calc(50%), 15px calc(50%);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    appearance: none;
+    padding-left: 30px;
+    padding-right: 12px;
+}
+
+/* Common table styles */
+.items-table,
+.traders-table {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 25px;
+}
+
+/* Common table element styles */
+.items-table table,
+.traders-table table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.items-table th, 
+.items-table td,
+.traders-table th,
+.traders-table td {
+    padding: 15px;
+    text-align: right;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.items-table th,
+.traders-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+    position: sticky;
+    top: 0;
+}
+
+.items-table tr:hover,
+.traders-table tr:hover {
+    background-color: #f1f3f5;
+}
+
+/* Selected row highlight when clicked */
+.items-table tbody tr.selected-row {
+    background-color: #e6f7ff;
+    outline: 2px solid rgba(77,171,247,0.15);
+}
+
+/* Common button styles */
+.btn {
+    height: 50px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    min-width: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.save-btn {
+    background-color: #20c997;
+    color: white;
+}
+
+.delete-btn {
+    background-color: #fa5252;
+    color: white;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive styles */
+@media screen and (max-width: 1200px) {
+    .item-form,
+    .trader-form {
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .item-form input, 
+    .item-form select,
+    .trader-form input,
+    .trader-form select {
+        flex: 0 0 calc(33.33% - 15px);
+        min-width: 200px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .item-form input, 
+    .item-form select,
+    .trader-form input,
+    .trader-form select {
+        flex: 0 0 calc(50% - 10px);
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .item-form,
+    .trader-form {
+        flex-direction: column;
+    }
+
+    .item-form input, 
+    .item-form select,
+    .trader-form input,
+    .trader-form select {
+        width: 100%;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
+/* Search styling */
+.search-form {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.search-form input {
+    flex: 1 1 auto;
+    min-width: 0; /* allow flex children to shrink in narrow screens */
+    padding: 12px 18px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    height: 50px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    background-color: #ffffff;
+    color: #2c3e50;
+}
+
+/* Style category select in the search area to match the search input */
+.search-form select,
+.search-form input {
+    height: 50px;
+    padding: 12px 18px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 15px;
+    background-color: #ffffff;
+    color: #2c3e50;
+    transition: all 0.3s ease;
+}
+
+.search-form select {
+    min-width: 160px;
+    max-width: 220px;
+    padding-left: 12px;
+    margin-right: 12px;
+    cursor: pointer;
+    appearance: none;
+}
+
+.search-form select:focus {
+    border-color: #4dabf7;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(77, 171, 247, 0.1);
+    transform: translateY(-2px);
+}
+
+.search-form input:focus {
+    border-color: #4dabf7;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(77, 171, 247, 0.1);
+    transform: translateY(-2px);
+}
+  /* Days selection container with overflow control */
+  .days-selection {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(100px, 1fr));
+      grid-template-rows: repeat(2, 35px);
+      gap: 8px;
+      width: 40%;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      overflow: hidden;
+    }
+
+    /* Individual day label */
+    .days-selection label {
+      display: flex;
+      align-items: center;
+      padding: 4px 8px;
+      background: #ffffff;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: fit-content;
+      min-width: 80px;
+    }
+
+    .days-selection label span {
+      font-size: 12px;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+
+    .days-selection label:hover {
+        transform: translateY(-2px);
+        background: #f1f3f5;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Specific checkbox styling that won't affect other inputs */
+    .days-selection label input[type="checkbox"] {
+        width: 14px !important;
+        height: 14px !important;
+      min-width: unset !important;
+      max-width: unset !important;
+      margin-left: 6px;
+      border: 1px solid #4dabf7;
+      border-radius: 3px;
+      cursor: pointer;
+      position: relative;
+      appearance: none;
+      background: white;
+      padding: 0;
+      flex: none;
+      overflow: hidden;
+  }
+
+  .days-selection label input[type="checkbox"]:checked {
+      background: #4dabf7;
+  }
+
+  .days-selection label input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      color: white;
+      font-size: 10px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+}/* Day text styling */
+.days-selection label span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.days-selection input[type="checkbox"]:checked + span {
+    color: #4dabf7;
+    font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 1200px) {
+    .days-selection {
+        grid-template-rows: repeat(2, 45px);
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .days-selection {
+        grid-template-rows: repeat(4, 40px);
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .days-selection {
+        grid-template-rows: repeat(7, 35px);
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Floating Label Style */
+.form-group label {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    background-color: white;
+    padding: 0 0.25rem;
+    color: #666;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+/* Label Animation on Focus/Fill */
+.form-group input:focus ~ label,
+.form-group input:not(:placeholder-shown) ~ label,
+.form-group select:focus ~ label,
+.form-group select:not(:placeholder-shown) ~ label {
+    top: 0;
+    transform: translateY(-50%) scale(0.9);
+    color: #4dabf7;
+}
+
+/* Updated HTML structure for each input */
+.form-group input:not(:placeholder-shown) ~ label {
+    top: 0;
+    transform: translateY(-50%) scale(0.9);
+}
+.new-item {
+    border-color: #ffc107 !important;
+    animation: highlight 1s ease-in-out;
+}
+
+@keyframes highlight {
+    0% { background-color: rgba(255, 193, 7, 0.2); }
+    100% { background-color: transparent; }
+}
+
+/* Autocomplete dropdown specific styles */
+.ui-autocomplete {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 0 0 4px 4px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: auto !important;
+    position: absolute;
+    z-index: 1000;
+}
+
+/* Fix width to match input */
+.ui-widget.ui-widget-content {
+    width: calc(100% - 2px) !important;
+    box-sizing: border-box;
+}
+
+/* Style menu items */
+.ui-menu .ui-menu-item {
+    padding: 8px 12px;
+    border: none;
+    cursor: pointer;
+}
+
+.ui-menu .ui-menu-item-wrapper {
+    padding: 8px 12px;
+}
+
+.ui-menu .ui-menu-item:hover,
+.ui-menu .ui-state-active {
+    background: #f5f5f5;
+    border: none;
+    margin: 0;
+}
+
+/* Update form group for itemName specifically */
+.form-group:has(#itemName) {
+    position: relative;
+    display: inline-block;
+    width: 200px; /* Match your other input widths */
+}
+
+/* Hide helper text */
+.ui-helper-hidden-accessible {
+    display: none;
+}
+.form-group {
+    position: relative;
+    margin: 10px; /* Add space between form groups */
+    padding: 5px;       /* Add some internal padding */
+}
+
+/* Payment Type Specific Styles */
+.payment-type {
+    margin: 15px 0;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.radio-label:hover {
+    background: #e9ecef;
+}
+
+.radio-label input[type="radio"] {
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+.radio-label span {
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+/* Partial Payment Section */
+.partial-payment {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.partial-payment .form-group {
+    max-width: 200px;
+}
+
+.remaining-amount {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.remaining-amount span:last-child {
+    font-weight: bold;
+    color: #fa5252;
+    margin-right: 10px;
+}
+
+/* Invoice Details Section Specific Styles */
+.invoice-details-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.invoice-details-section .item-form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    padding: 15px;
+    box-shadow: none;
+    margin: 0;
+}
+
+/* Trader Selection */
+.invoice-details-section #traderName {
+    grid-column: 1 / -1;
+    width: 10%;
+    max-width: none;
+}
+
+/* Discount Section */
+.invoice-details-section .discount-section {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.invoice-details-section .discount-section .form-group {
+    margin: 0;
+    width: 200px;
+}
+
+.invoice-details-section .discount-result {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    color: #2c3e50;
+}
+
+/* Total Amount */
+.invoice-details-section .total-amount {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* Payment Type Section */
+.invoice-details-section .payment-type {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+
+.invoice-details-section .payment-type .radio-group {
+    justify-content: flex-start;
+}
+
+.invoice-details-section .payment-type .partial-payment {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+/* Save Invoice Button */
+.invoice-details-section .save-btn {
+    grid-column: 1 / -1;
+    width: 200px;
+    justify-self: center;
+    margin-top: 20px;
+}
+
+/* Final Total Display */
+#finalTotal {
+    font-size: 20px;
+    font-weight: bold;
+    color: #20c997;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .invoice-details-section .item-form {
+        grid-template-columns: 1fr;
+    }
+
+    .invoice-details-section .payment-type .radio-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .invoice-details-section .discount-section .form-group {
+        width: 100%;
+    }
+}

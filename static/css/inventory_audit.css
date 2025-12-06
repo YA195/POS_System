@@ -1,0 +1,725 @@
+/* inventory_audit.css - جرد الأصناف styling */
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #4f46e5;
+    --success-color: #16a34a;
+    --warning-color: #f59e0b;
+    --danger-color: #dc2626;
+    --muted-color: #6c757d;
+    --light-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border-color: #e5e7eb;
+    --shadow: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-hover: 0 8px 24px rgba(0,0,0,0.12);
+    --border-radius: 8px;
+    --transition: all 0.2s ease;
+}
+
+.inventory-audit-container {
+    direction: rtl;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    background: var(--light-bg);
+    min-height: 100vh;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.page-header h1 {
+    color: #1f2937;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+}
+
+.page-header p {
+    color: var(--muted-color);
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Search Section */
+.search-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.search-row {
+    display: flex;
+    gap: 20px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.search-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 250px;
+}
+
+.search-group label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.search-input {
+    padding: 10px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: var(--transition);
+    background: var(--card-bg);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-add {
+    padding: 12px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+.btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* Audit Table */
+.audit-section {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    min-width: 680px;
+    background: var(--card-bg);
+}
+
+.audit-table thead th {
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    padding: 15px 10px;
+    text-align: center;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.audit-table tbody td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
+    text-align: center;
+}
+
+.audit-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.audit-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.quantity-input {
+    width: 80px;
+    padding: 5px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.remove-btn {
+    background: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.remove-btn:hover {
+    background: #b91c1c;
+}
+
+/* Action Buttons */
+.action-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-save,
+.btn-approve {
+    padding: 12px 30px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-save {
+    background: var(--warning-color);
+    color: white;
+}
+
+.btn-save:hover {
+    background: #d97706;
+    transform: translateY(-2px);
+}
+
+.btn-approve {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-approve:hover {
+    background: #059669;
+    transform: translateY(-2px);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    width: 80%;
+    max-width: 600px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.modal-header {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.audit-summary {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.summary-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+}
+
+.shortage {
+    color: var(--danger-color);
+}
+
+.excess {
+    color: var(--success-color);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.table-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.table-actions .btn,
+.table-actions .remove-btn {
+    flex: 0 0 auto;
+}
+
+.btn-confirm,
+.btn-cancel {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-confirm {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-cancel {
+    background: var(--muted-color);
+    color: white;
+}
+
+/* Loading and No Data States */
+.loading-indicator,
+.no-data-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.no-data-message i {
+    font-size: 3rem;
+    color: var(--muted-color);
+    margin-bottom: 20px;
+}
+
+.no-data-message h3 {
+    color: #374151;
+    margin: 0 0 10px 0;
+}
+
+.no-data-message p {
+    color: var(--muted-color);
+    margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .inventory-audit-container {
+        padding: 10px;
+    }
+
+    .search-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-group {
+        min-width: auto;
+    }
+
+    .audit-table {
+        font-size: 0.8rem;
+    }
+
+    .audit-table thead th,
+    .audit-table tbody td {
+        padding: 8px 5px;
+    }
+
+    .action-section {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .btn-save,
+    .btn-approve {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 20% auto;
+    }
+}
+
+/* Responsive Design for Mobile */
+@media (max-width: 768px) {
+    .inventory-audit-container {
+        padding: 10px;
+        max-width: 100%;
+    }
+
+    .page-header {
+        margin-bottom: 20px;
+        padding: 15px;
+    }
+
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .search-section {
+        margin-bottom: 20px;
+    }
+
+    .search-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .search-group {
+        width: 100%;
+    }
+
+    .search-input {
+        width: 100%;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    .btn-add, .btn-save {
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    .table-container {
+        overflow-x: visible;
+    }
+
+    .quantity-input {
+        width: 80px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    .action-section {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .modal-content {
+        width: 98%;
+        margin: 5% auto;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        font-size: 1.2rem;
+        padding: 15px;
+    }
+
+    .modal-body {
+        padding: 15px;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px;
+    }
+
+    .btn-confirm, .btn-cancel, .btn-save-only {
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    .summary-stats {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .stat-item {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    /* Previous audits page responsive */
+    .large-modal .modal-content {
+        max-width: 98%;
+        max-height: 95vh;
+    }
+
+    .audit-summary-section {
+        margin-bottom: 20px;
+        padding: 15px;
+    }
+
+    .items-section h3,
+    .all-items-section h3 {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .inventory-audit-container {
+        padding: 5px;
+    }
+
+    .page-header {
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+
+    .page-header h1 {
+        font-size: 1.3rem;
+    }
+
+    .page-header p {
+        font-size: 0.9rem;
+    }
+
+    .quantity-input {
+        width: 70px;
+    }
+
+    .modal-header {
+        font-size: 1.1rem;
+        padding: 12px;
+    }
+
+    .modal-body {
+        padding: 12px;
+    }
+
+    .modal-actions {
+        padding: 12px;
+    }
+}
+
+/* Save-only button styling */
+.btn-save-only {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-left: 10px;
+}
+
+.btn-save-only:hover {
+    background: #5a6268;
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 768px) {
+    .inventory-audit-container {
+        padding: 10px;
+    }
+
+    .search-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .search-group {
+        width: 100%;
+    }
+
+    .search-input {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .quantity-input {
+        width: 70px;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 5% auto;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-confirm,
+    .btn-cancel,
+    .btn-save-only {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .summary-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .inventory-audit-container {
+        padding: 5px;
+    }
+
+    .audit-table {
+        font-size: 0.85rem;
+    }
+
+    .modal-content {
+        width: 98%;
+        margin: 2% auto;
+    }
+
+    .audit-table tbody td {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    .audit-table tbody td::before {
+        font-size: 0.9rem;
+    }
+
+    .quantity-input {
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 900px) {
+    .table-container {
+        overflow-x: visible;
+    }
+
+    .audit-table {
+        min-width: 0;
+        display: block;
+    }
+
+    .audit-table thead {
+        display: none;
+    }
+
+    .audit-table tbody {
+        display: block;
+    }
+
+    .audit-table tbody tr {
+        display: block;
+        margin-bottom: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        background: var(--card-bg);
+        overflow: hidden;
+    }
+
+    .audit-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border: none;
+        border-bottom: 1px dashed var(--border-color);
+        text-align: right;
+    }
+
+    .audit-table tbody td:last-child {
+        border-bottom: none;
+    }
+
+    .audit-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .audit-table tbody td[data-label="الإجراء"],
+    .audit-table tbody td[data-label="الكمية الفعلية"] {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .quantity-input {
+        width: 100%;
+    }
+
+    .remove-btn {
+        width: 100%;
+        text-align: center;
+        padding: 10px;
+    }
+
+    .stat-item {
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+    }
+
+    .table-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
