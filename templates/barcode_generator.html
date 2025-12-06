@@ -1,0 +1,806 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/barcode_generator.css') }}">
+
+<div class="barcode-generator-container">
+    <div class="page-header">
+        <h1>طباعة باركود</h1>
+        <p>اختر الصنف وحدد كمية الطباعة</p>
+    </div>
+
+    <!-- Printer Selection -->
+    <div class="printer-section">
+        <h3>اختيار الطابعة</h3>
+        <div class="printer-group">
+            <label for="printerSelect">الطابعة:</label>
+            <select id="printerSelect">
+                <option value="">اختر الطابعة</option>
+            </select>
+            <button id="savePrinterBtn" class="btn-save-printer">حفظ الطابعة</button>
+        </div>
+    </div>
+
+    <!-- Section 1: Search and Items Table -->
+    <div class="section">
+        <h3>البحث عن الأصناف</h3>
+        <div class="search-section">
+            <div class="form-group">
+                <label for="searchBox">البحث (الاسم، الباركود، أو باركود إضافي):</label>
+                <input type="text" id="searchBox" placeholder="ابحث عن صنف..." autofocus>
+            </div>
+        </div>
+
+        <div class="items-table-container">
+            <table id="itemsTable" class="items-table">
+                <thead>
+                    <tr>
+                        <th>الباركود</th>
+                        <th>الاسم</th>
+                        <th>السعر</th>
+                        <th>المخزون</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsTableBody">
+                    <!-- Items will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 2: Print Queue Table -->
+    <div class="section" id="queueSection" style="display: none;">
+        <h3>قائمة الطباعة</h3>
+        <div class="queue-table-container">
+            <table id="queueTable" class="queue-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">الباركود</th>
+                        <th style="width: 35%;">الاسم</th>
+                        <th style="width: 15%;">السعر</th>
+                        <th style="width: 15%;">الكمية</th>
+                        <th style="width: 10%;">الإجمالي</th>
+                        <th style="width: 10%;">حذف</th>
+                    </tr>
+                </thead>
+                <tbody id="queueTableBody">
+                    <!-- Queue items will be added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="action-buttons">
+            <button id="printBtn" class="btn-print">
+                <i class="fas fa-print"></i>
+                طباعة جميع الباركودات
+            </button>
+            <button id="clearQueueBtn" class="btn-clear-queue">
+                <i class="fas fa-trash"></i>
+                مسح القائمة
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>جاري المعالجة...</p>
+    </div>
+</div>
+
+<!-- Print Styles -->
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .barcode-print-item, .barcode-print-item * {
+        visibility: visible;
+    }
+    .barcode-print-item {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        display: flex !important;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+    }
+    .barcode-card {
+        page-break-inside: avoid;
+        margin: 10px;
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: center;
+    }
+    .barcode-image {
+        max-width: 200px;
+        height: auto;
+    }
+    .barcode-text {
+        font-family: monospace;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+}
+</style>
+
+<script>
+window.addEventListener('load', function() {
+    // Elements
+    const printerSelect = document.getElementById('printerSelect');
+    const savePrinterBtn = document.getElementById('savePrinterBtn');
+    const searchBox = document.getElementById('searchBox');
+    const itemsTableBody = document.getElementById('itemsTableBody');
+    const queueSection = document.getElementById('queueSection');
+    const queueTableBody = document.getElementById('queueTableBody');
+    const printBtn = document.getElementById('printBtn');
+    const clearQueueBtn = document.getElementById('clearQueueBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
+    let allItems = []; // Store all items
+    let printQueue = []; // Array of items to print {barcode, name, price, copies}
+
+    // Load printers
+    function loadPrinters() {
+        fetch('/get_printers')
+            .then(r => r.json())
+            .then(printers => {
+                printerSelect.innerHTML = '<option value="">اختر الطابعة</option>';
+                printers.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p;
+                    option.textContent = p;
+                    printerSelect.appendChild(option);
+                });
+                loadSavedPrinter();
+            })
+            .catch(() => {});
+    }
+
+    // Load saved printer
+    function loadSavedPrinter() {
+        fetch('/get_printer')
+            .then(r => r.json())
+            .then(d => {
+                if (d.printer) {
+                    printerSelect.value = d.printer;
+                }
+            })
+            .catch(() => {});
+    }
+
+    // Save printer
+    savePrinterBtn.addEventListener('click', function() {
+        const p = printerSelect.value.trim();
+        if (!p) {
+            alert('اختر طابعة أولاً');
+            return;
+        }
+        fetch('/save_printer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ printer: p })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                alert('تم حفظ الطابعة');
+            } else {
+                alert('خطأ في الحفظ');
+            }
+        })
+        .catch(() => alert('خطأ في الحفظ'));
+    });
+
+    // Load all items
+    function loadItems() {
+        showLoading();
+        fetch('/get_items')
+            .then(r => r.json())
+            .then(items => {
+                // Sort by barcode (smallest to greatest)
+                allItems = items.sort((a, b) => {
+                    const barcodeA = parseFloat(a.barcode) || 0;
+                    const barcodeB = parseFloat(b.barcode) || 0;
+                    return barcodeA - barcodeB;
+                });
+                displayItems(allItems);
+            })
+            .catch(err => {
+                console.error('Error loading items:', err);
+                alert('خطأ في تحميل الأصناف');
+            })
+            .finally(hideLoading);
+    }
+
+    // Display items in table
+    function displayItems(items) {
+        itemsTableBody.innerHTML = '';
+        if (items.length === 0) {
+            itemsTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">لا توجد أصناف</td></tr>';
+            return;
+        }
+
+        items.forEach(item => {
+            const row = document.createElement('tr');
+            row.classList.add('item-row');
+            row.dataset.itemId = item.id;
+            row.innerHTML = `
+                <td>${item.barcode || '-'}</td>
+                <td>${item.name || '-'}</td>
+                <td>${item.sell_price || '-'}</td>
+                <td>${item.quantity || 0}</td>
+            `;
+            row.addEventListener('click', function() {
+                addItemToQueue(item);
+            });
+            itemsTableBody.appendChild(row);
+        });
+    }
+
+    // Filter items based on search
+    function filterItems() {
+        const searchTerm = searchBox.value.trim();
+        if (!searchTerm) {
+            displayItems(allItems);
+            return;
+        }
+
+        const searchLower = searchTerm.toLowerCase();
+        const isNumericOnly = /^\d+$/.test(searchTerm);
+        
+        let filtered;
+        
+        if (isNumericOnly) {
+            // If search is only numbers, look for exact barcode/barcode2 match first
+            filtered = allItems.filter(item => {
+                const barcode = (item.barcode || '').toLowerCase();
+                const barcode2 = (item.barcode2 || '').toLowerCase();
+                
+                // Check for exact match
+                if (barcode === searchTerm || barcode2 === searchTerm) {
+                    return true;
+                }
+                
+                // Check if barcode2 contains this exact number (separated by (,,))
+                const barcode2Parts = barcode2.split('(,,)').map(p => p.trim());
+                if (barcode2Parts.includes(searchTerm)) {
+                    return true;
+                }
+                
+                return false;
+            });
+            
+            // If no exact match found, fall back to partial match
+            if (filtered.length === 0) {
+                filtered = allItems.filter(item => {
+                    const barcode = (item.barcode || '').toLowerCase();
+                    const barcode2 = (item.barcode2 || '').toLowerCase();
+                    
+                    return barcode.includes(searchLower) || barcode2.includes(searchLower);
+                });
+            }
+        } else {
+            // For non-numeric searches, use flexible word matching
+            // Split search into words
+            const searchWords = searchLower.split(/\s+/).filter(w => w.length > 0);
+            
+            filtered = allItems.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const barcode = (item.barcode || '').toLowerCase();
+                const barcode2 = (item.barcode2 || '').toLowerCase();
+                
+                // Check if barcode contains the search (for mixed alphanumeric barcodes)
+                if (barcode.includes(searchLower) || barcode2.includes(searchLower)) {
+                    return true;
+                }
+                
+                // Check if ALL search words exist in the name (in any order)
+                const allWordsFound = searchWords.every(word => name.includes(word));
+                if (allWordsFound) {
+                    return true;
+                }
+                
+                return false;
+            });
+        }
+
+        displayItems(filtered);
+    }
+
+    // Add item to queue
+    function addItemToQueue(item) {
+        // Check if item already in queue
+        const existingIndex = printQueue.findIndex(q => q.barcode === item.barcode);
+        
+        if (existingIndex >= 0) {
+            // Item already in queue, just increment quantity
+            printQueue[existingIndex].copies++;
+        } else {
+            // Add new item to queue
+            printQueue.push({
+                barcode: item.barcode,
+                name: item.name,
+                price: item.sell_price,
+                copies: 1
+            });
+        }
+        
+        updateQueueTable();
+        queueSection.style.display = 'block';
+        
+        // Focus on the quantity input for the item just added
+        setTimeout(() => {
+            const rows = queueTableBody.querySelectorAll('tr');
+            if (rows.length > 0) {
+                const lastRow = rows[rows.length - 1];
+                const qtyInput = lastRow.querySelector('.qty-input');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }
+            }
+        }, 50);
+    }
+
+    // Update queue table
+    function updateQueueTable() {
+        queueTableBody.innerHTML = '';
+        
+        if (printQueue.length === 0) {
+            queueSection.style.display = 'none';
+            return;
+        }
+
+        printQueue.forEach((item, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.barcode}</td>
+                <td>${item.name}</td>
+                <td>${item.price}</td>
+                <td>
+                    <input type="number" 
+                           class="qty-input" 
+                           min="1" 
+                           value="${item.copies}" 
+                           data-index="${index}"
+                           tabindex="${index + 1}">
+                </td>
+                <td class="total-copies">${item.copies}</td>
+                <td>
+                    <button class="btn-remove-small" onclick="removeFromQueue(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            `;
+            queueTableBody.appendChild(row);
+        });
+
+        // Add event listeners to quantity inputs
+        document.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('input', function() {
+                const index = parseInt(this.dataset.index);
+                const newQty = parseInt(this.value) || 1;
+                printQueue[index].copies = Math.max(1, newQty);
+                
+                // Update total display
+                const row = this.closest('tr');
+                row.querySelector('.total-copies').textContent = printQueue[index].copies;
+            });
+
+            // Handle Tab key navigation
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const currentIndex = parseInt(this.dataset.index);
+                    const nextInput = document.querySelector(`.qty-input[data-index="${currentIndex + 1}"]`);
+                    if (nextInput) {
+                        nextInput.focus();
+                        nextInput.select();
+                    }
+                }
+            });
+        });
+
+        queueSection.style.display = 'block';
+    }
+
+    // Remove from queue
+    window.removeFromQueue = function(index) {
+        printQueue.splice(index, 1);
+        updateQueueTable();
+    };
+
+    // Clear entire queue
+    clearQueueBtn.addEventListener('click', function() {
+        if (confirm('هل أنت متأكد من مسح قائمة الطباعة؟')) {
+            printQueue = [];
+            updateQueueTable();
+        }
+    });
+
+    // Search event listener
+    searchBox.addEventListener('input', filterItems);
+
+    // Print barcodes directly to printer
+    printBtn.addEventListener('click', function() {
+        if (printQueue.length === 0) {
+            alert('قائمة الطباعة فارغة');
+            return;
+        }
+
+        const printer = printerSelect.value;
+        if (!printer) {
+            alert('اختر طابعة أولاً');
+            return;
+        }
+
+        const printItems = [];
+        printQueue.forEach(item => {
+            for (let i = 0; i < item.copies; i++) {
+                printItems.push({
+                    barcode: item.barcode,
+                    name: item.name,
+                    price: item.price
+                });
+            }
+        });
+
+        // Calculate total labels to print
+        const totalLabels = printItems.length;
+        if (!confirm(`سيتم طباعة ${totalLabels} باركود في ${printQueue.length} أمر طباعة منفصل. هل تريد المتابعة؟`)) {
+            return;
+        }
+
+        showLoading();
+        
+        // Send each item's copies as separate print jobs
+        let successCount = 0;
+        let errorCount = 0;
+        let currentIndex = 0;
+
+        function printNextBatch() {
+            if (currentIndex >= printQueue.length) {
+                hideLoading();
+                
+                if (errorCount === 0) {
+                    alert(`تم إرسال ${successCount} أمر طباعة بنجاح`);
+                    // Clear queue after successful print
+                    printQueue = [];
+                    updateQueueTable();
+                } else {
+                    alert(`تم إرسال ${successCount} أمر طباعة بنجاح\nفشل ${errorCount} أمر`);
+                }
+                return;
+            }
+
+            const item = printQueue[currentIndex];
+            const itemPrintData = [];
+            
+            // Create array of copies for this item only
+            for (let i = 0; i < item.copies; i++) {
+                itemPrintData.push({
+                    barcode: item.barcode,
+                    name: item.name,
+                    price: item.price
+                });
+            }
+
+            // Send this item's print job separately
+            fetch('/print_barcodes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    printer: printer,
+                    barcodes: itemPrintData
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                    console.error(`Print failed for ${item.barcode}: ${d.error}`);
+                }
+            })
+            .catch(e => {
+                errorCount++;
+                console.error(`Print error for ${item.barcode}:`, e);
+            })
+            .finally(() => {
+                currentIndex++;
+                // Small delay between print jobs (200ms)
+                setTimeout(printNextBatch, 200);
+            });
+        }
+
+        // Start printing
+        printNextBatch();
+    });
+
+    // Loading functions
+    function showLoading() {
+        loadingIndicator.style.display = 'block';
+    }
+
+    function hideLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    // Initialize
+    loadPrinters();
+    loadItems();
+});
+</script>
+
+<style>
+.items-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.items-table thead {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 10;
+}
+
+.items-table th {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+.items-table td {
+    padding: 10px 12px;
+    text-align: right;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.items-table tbody tr.item-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.items-table tbody tr.item-row:hover {
+    background-color: #e3f2fd;
+}
+
+.selected-item-details {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 120px;
+}
+
+.detail-row span {
+    color: #212529;
+    flex: 1;
+    text-align: left;
+}
+
+.detail-row input[type="number"] {
+    width: 100px;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+#searchBox {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ced4da;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+}
+
+#searchBox:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.search-section {
+    margin-bottom: 15px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.btn-print, .btn-clear {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-print {
+    background: #28a745;
+    color: white;
+}
+
+.btn-print:hover {
+    background: #218838;
+}
+
+.btn-clear {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-clear:hover {
+    background: #5a6268;
+}
+
+.btn-add-queue {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    background: #007bff;
+    color: white;
+}
+
+.btn-add-queue:hover {
+    background: #0056b3;
+}
+
+.btn-clear-queue {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    background: #dc3545;
+    color: white;
+}
+
+.btn-clear-queue:hover {
+    background: #c82333;
+}
+
+.queue-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.queue-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.queue-table thead {
+    position: sticky;
+    top: 0;
+    background: #28a745;
+    z-index: 10;
+}
+
+.queue-table th {
+    padding: 12px;
+    text-align: right;
+    color: white;
+    font-weight: 600;
+    border-bottom: 2px solid #1e7e34;
+}
+
+.queue-table td {
+    padding: 10px 12px;
+    text-align: right;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.queue-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.queue-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.qty-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 2px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 600;
+    transition: border-color 0.2s;
+}
+
+.qty-input:focus {
+    outline: none;
+    border-color: #007bff;
+    background-color: #e7f3ff;
+}
+
+.total-copies {
+    font-weight: 600;
+    color: #28a745;
+    text-align: center !important;
+}
+
+.btn-remove-small {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-remove-small:hover {
+    background: #c82333;
+}
+
+.btn-remove-small i {
+    font-size: 12px;
+}
+</style>
+
+{% endblock %}

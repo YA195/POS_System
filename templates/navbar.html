@@ -1,0 +1,257 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+
+<nav class="navbar">
+    <div class="nav-container">
+        <button class="hamburger" onclick="toggleMenu()" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <ul class="nav-list" id="navList">
+            {% if 'home' in session.get('permissions', []) %}
+            <li class="nav-item">
+                <a href="{{ url_for('Home') }}" class="nav-link">
+                    <i class="fas fa-home"></i>
+                    الرئيسية
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- Dropdown menu - show if user has any of these permissions -->
+            {% if 'items' in session.get('permissions', []) or 
+            'invoice' in session.get('permissions', []) or 
+            'traders' in session.get('permissions', []) or 
+            'categories' in session.get('permissions', []) or 
+            'companies' in session.get('permissions', []) %}   
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropbtn">
+                    <i class="fas fa-plus"></i>
+                    اضافة
+                </a>
+                <div class="dropdown-content">
+                    {% if 'items' in session.get('permissions', []) %}
+                    <a href="{{ url_for('items') }}">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                        المنتجات
+                    </a>
+                    {% endif %}
+
+                    {% if 'invoice' in session.get('permissions', []) %}
+                    <a href="{{ url_for('invoice') }}">
+                        <i class="fas fa-receipt"></i>
+                        فاتورة
+                    </a>
+                    {% endif %}
+
+                    {% if 'traders' in session.get('permissions', []) %}
+                    <a href="{{ url_for('traders') }}">
+                        <i class="fas fa-user-tie"></i>
+                        التجار
+                    </a>
+                    {% endif %}
+
+                    {% if 'categories' in session.get('permissions', []) %}
+                    <a href="{{ url_for('categories') }}">
+                        <i class="fas fa-tags"></i>
+                        الفئات
+                    </a>
+                    {% endif %}
+
+                    {% if 'companies' in session.get('permissions', []) %}
+                    <a href="{{ url_for('companies') }}">
+                        <i class="fas fa-tags"></i>
+                        الشركات
+                    </a>
+                    {% endif %}
+
+                    {% if 'barcode_generator' in session.get('permissions', []) %}
+                    <a href="{{ url_for('barcode_generator') }}">
+                        <i class="fas fa-barcode"></i>
+                        مولد الباركود
+                    </a>
+                    {% endif %}
+                </div>
+            </li>
+            {% endif %}
+
+            <!-- Reports dropdown -->
+            {% if 'reports' in session.get('permissions', []) %}
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropbtn">
+                    <i class="fas fa-chart-line"></i>
+                    تقارير
+                </a>
+                <div class="dropdown-content">
+                    <a href="{{ url_for('reports_shifts') }}">
+                        <i class="fas fa-chart-bar"></i>
+                        تقارير الورديات
+                    </a>
+                    <a href="{{ url_for('supplier_balances') }}">
+                        <i class="fas fa-balance-scale"></i>
+                        ارصدة الموردين
+                    </a>
+                    {% if 'cash_boxes_report' in session.get('permissions', []) %}
+                    <a href="{{ url_for('cash_boxes_report') }}">
+                        <i class="fas fa-cash-register"></i>
+                        الصناديق
+                    </a>
+                    {% endif %}
+                    {% if 'item_movement' in session.get('permissions', []) %}
+                    <a href="{{ url_for('item_movement') }}">
+                        <i class="fas fa-exchange-alt"></i>
+                        حركة الأصناف
+                    </a>
+                    {% endif %}
+                    {% if 'inventory_audit' in session.get('permissions', []) %}
+                    <a href="{{ url_for('inventory_audit') }}">
+                        <i class="fas fa-clipboard-check"></i>
+                        جرد الأصناف
+                    </a>
+                    {% endif %}
+                    {% if 'previous_audits' in session.get('permissions', []) %}
+                    <a href="{{ url_for('previous_audits') }}">
+                        <i class="fas fa-history"></i>
+                        الجرد السابقة
+                    </a>
+                    {% endif %}
+                    {% if 'employees' in session.get('permissions', []) %}
+                    <a href="{{ url_for('employees_page') }}">
+                        <i class="fas fa-users"></i>
+                        المناديب
+                    </a>
+                    {% endif %}
+                </div>
+            </li>
+            {% endif %}
+
+
+            {% if 'sales' in session.get('permissions', []) %}
+            <li class="nav-item">
+                <a href="{{ url_for('sales') }}" class="nav-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    الاوردرات
+                </a>
+            </li>
+            {% endif %}
+
+            {% if 'shifts' in session.get('permissions', []) %}
+            <li class="nav-item">
+                <a href="{{ url_for('shifts') }}" class="nav-link">
+                    <i class="fas fa-clock"></i>
+                    الورديات
+                </a>
+            </li>
+            {% endif %}
+            {% if 'invoices' in session.get('permissions', []) %}
+            <li class="nav-item">
+                <a href="{{ url_for('invoices_page') }}" class="nav-link">
+                    <i class="fas fa-file-invoice"></i>
+                    الفواتير
+                </a>
+            </li>
+            {% endif %}
+
+            {% if 'settings' in session.get('permissions', []) %}
+            <li class="nav-item">
+                <a href="{{ url_for('settings') }}" class="nav-link">
+                    <i class="fas fa-cog"></i>
+                    الإعدادات
+                </a>
+            </li>
+            {% endif %}
+
+            {% if 'settings' in session.get('permissions', []) %}
+            <li class="nav-item">
+                <a href="{{ url_for('activity_logs') }}" class="nav-link">
+                    <i class="fas fa-history"></i>
+                    سجل النشاطات
+                </a>
+            </li>
+            {% endif %}
+
+            {% if 'closing' in session.get('permissions', []) %}
+            <li class="nav-item">
+                <a href="{{ url_for('closing') }}" class="nav-link">
+                    <i class="fas fa-cash-register"></i>
+                    اقفال
+                </a>
+            </li>
+            {% endif %}
+
+            {% if session.get('user_id') %}
+            <button onclick="handleLogout()" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                خروج
+            </button>
+            {% endif %}
+        </ul>
+    </div>
+</nav>
+
+<script>
+function toggleMenu() {
+    const navList = document.getElementById('navList');
+    const hamburger = document.querySelector('.hamburger');
+    const isActive = navList.classList.toggle('active');
+    hamburger.classList.toggle('active');
+    document.body.style.overflow = isActive ? 'hidden' : '';
+
+    // If the menu is being closed, also close any open dropdowns
+    if (!isActive) {
+        document.querySelectorAll('.nav-item.dropdown.active').forEach(d => {
+            d.classList.remove('active');
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const navbar = document.querySelector('.navbar');
+    const navList = document.getElementById('navList');
+
+    // 1. Close the menu when clicking outside of it
+    document.addEventListener('click', function(event) {
+        if (navList.classList.contains('active') && !navbar.contains(event.target)) {
+            toggleMenu();
+        }
+    });
+
+    // 2. Handle all clicks within the navigation list itself
+    navList.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (!link) return; // Exit if the click wasn't on a link
+
+        const isDropdownButton = link.classList.contains('dropbtn');
+        const parentDropdown = link.closest('.nav-item.dropdown');
+
+        // --- Logic for Mobile View ---
+        if (window.innerWidth <= 768) {
+            // If the user clicked a dropdown button (e.g., "Reports")
+            if (isDropdownButton) {
+                e.preventDefault(); // Stop the link from navigating
+                
+                const wasActive = parentDropdown.classList.contains('active');
+
+                // First, close all other dropdowns
+                document.querySelectorAll('.nav-item.dropdown').forEach(d => {
+                    if (d !== parentDropdown) {
+                        d.classList.remove('active');
+                    }
+                });
+
+                // Then, toggle the one that was clicked
+                parentDropdown.classList.toggle('active');
+
+            } else {
+                // If the user clicked a regular link, close the menu after a short delay
+                setTimeout(toggleMenu, 150);
+            }
+        }
+    });
+});
+
+function handleLogout() {
+    if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
+        window.location.href = "{{ url_for('logout') }}";
+    }
+}
+</script>

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}تقرير الصناديق{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cash_boxes_report.css') }}">
+
+<div class="container-fluid cash-boxes-container">
+    <h2 class="page-title">إدارة الصناديق</h2>
+
+    <!-- Cash Boxes Summary Cards -->
+    <div class="cash-boxes-summary" id="cashBoxesSummary">
+        <!-- Will be populated by JavaScript -->
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button class="btn btn-primary" onclick="showTransferModal()">
+            <i class="fas fa-exchange-alt"></i>
+            تحويل بين الصناديق
+        </button>
+        <button class="btn btn-success" onclick="showDepositModal()">
+            <i class="fas fa-plus-circle"></i>
+            إيداع
+        </button>
+        <button class="btn btn-danger" onclick="showWithdrawModal()">
+            <i class="fas fa-minus-circle"></i>
+            سحب
+        </button>
+    </div>
+
+    <!-- Transactions History -->
+    <div class="card mt-4">
+        <h5>سجل الحركات</h5>
+        <div class="filters mb-3">
+            <input type="date" id="startDate" class="form-control">
+            <input type="date" id="endDate" class="form-control">
+            <select id="filterCashBox" class="form-control">
+                <option value="">جميع الصناديق</option>
+            </select>
+            <button class="btn btn-primary" onclick="loadTransactions()">
+                <i class="fas fa-search"></i>
+                بحث
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table" id="transactionsTable">
+                <thead>
+                    <tr>
+                        <th>التاريخ</th>
+                        <th>النوع</th>
+                        <th>من صندوق</th>
+                        <th>إلى صندوق</th>
+                        <th>المبلغ</th>
+                        <th>الملاحظات</th>
+                        <th>المستخدم</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Transfer Modal -->
+<div class="modal" id="transferModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>تحويل بين الصناديق</h3>
+            <button class="close-btn" onclick="closeTransferModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>من صندوق:</label>
+                <select id="fromCashBox" class="form-control">
+                    <option value="">اختر صندوق</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>إلى صندوق:</label>
+                <select id="toCashBox" class="form-control">
+                    <option value="">اختر صندوق</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>المبلغ:</label>
+                <input type="number" id="transferAmount" class="form-control" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label>الملاحظات:</label>
+                <textarea id="transferNotes" class="form-control" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-success" onclick="processTransfer()">
+                <i class="fas fa-check"></i>
+                تأكيد التحويل
+            </button>
+            <button class="btn btn-secondary" onclick="closeTransferModal()">
+                إلغاء
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Deposit Modal -->
+<div class="modal" id="depositModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>إيداع في صندوق</h3>
+            <button class="close-btn" onclick="closeDepositModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>الصندوق:</label>
+                <select id="depositCashBox" class="form-control">
+                    <option value="">اختر صندوق</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>المبلغ:</label>
+                <input type="number" id="depositAmount" class="form-control" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label>الملاحظات:</label>
+                <textarea id="depositNotes" class="form-control" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-success" onclick="processDeposit()">
+                <i class="fas fa-check"></i>
+                تأكيد الإيداع
+            </button>
+            <button class="btn btn-secondary" onclick="closeDepositModal()">
+                إلغاء
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Withdraw Modal -->
+<div class="modal" id="withdrawModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>سحب من صندوق</h3>
+            <button class="close-btn" onclick="closeWithdrawModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>الصندوق:</label>
+                <select id="withdrawCashBox" class="form-control">
+                    <option value="">اختر صندوق</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>المبلغ:</label>
+                <input type="number" id="withdrawAmount" class="form-control" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label>الملاحظات:</label>
+                <textarea id="withdrawNotes" class="form-control" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-danger" onclick="processWithdraw()">
+                <i class="fas fa-check"></i>
+                تأكيد السحب
+            </button>
+            <button class="btn btn-secondary" onclick="closeWithdrawModal()">
+                إلغاء
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/cash_boxes_report.js') }}"></script>
+{% endblock %}

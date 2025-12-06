@@ -1,0 +1,562 @@
+{% extends "base.html" %}
+
+{% block title %}اقفال - Supermarket POS{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/closing.css') }}">
+
+<div class="closing-container">
+    <div class="summary-section">
+        <div class="summary-card total">
+            <i class="fas fa-money-bill-wave"></i>
+            <h3>إجمالي المبيعات</h3>
+            <p id="totalSales">0.00</p>
+        </div>
+        
+        <div class="summary-card expenses">
+            <i class="fas fa-receipt"></i>
+            <h3>المصروفات</h3>
+            <p id="totalExpenses">0.00</p>
+        </div>
+        
+        <div class="summary-card returned">
+            <i class="fas fa-arrow-rotate-left"></i>
+            <h3>المرتجعات</h3>
+            <p id="totalReturns">0.00</p>
+        </div>
+        
+        <div class="summary-card invoices">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <h3>الفواتير</h3>
+            <p id="totalInvoices">0.00</p>
+        </div>
+
+        <div class="summary-card discounts">
+            <i class="fas fa-percentage"></i>
+            <h3>الخصومات</h3>
+            <p id="totalDiscounts">0.00</p>
+        </div>
+
+        <div class="summary-card cash">
+            <i class="fas fa-cash-register"></i>
+            <h3>مجموع الصناديق</h3>
+            <p id="cashAmount">0.00</p>
+        </div>
+        <div class="summary-card delivery">
+            <i class="fas fa-moped"></i>
+            <h3>دليفري</h3>
+            <p id="delivery_pending">0.00</p>
+        </div>
+        {% if 'admin' in session.get('permissions', []) %}
+        <div class="summary-card profit">
+            <i class="fas fa-chart-line"></i>
+            <h3>الربح</h3>
+            <p id="totalProfit">0.00</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Cash Boxes Section -->
+    <div class="cash-boxes-section">
+        <h3><i class="fas fa-box"></i> الصناديق</h3>
+        <div id="cashBoxesCards" class="summary-section">
+            <!-- Cash boxes will be loaded here -->
+        </div>
+    </div>
+    
+    <div class="shift-actions">
+        <button id="closeShiftBtn" class="btn btn-danger" onclick="closeShift()">
+            <i class="fas fa-power-off"></i>
+            إغلاق الوردية
+        </button>
+    </div>
+
+    <div class="details-section">
+        <div class="expenses-section">
+            <h3>المصروفات</h3>
+            <button class="btn btn-primary" onclick="showAddExpenseModal()">
+                <i class="fas fa-plus"></i> إضافة مصروف
+            </button>
+            <div class="expenses-list">
+                <table id="expensesTable">
+                    <thead>
+                        <tr>
+                            <th>الوصف</th>
+                            <th>المبلغ</th>
+                            <th>التاريخ</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="transactions-section">
+            <h3>تفاصيل المعاملات</h3>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('sales', this)">المبيعات</button>
+                <button class="tab-btn" onclick="showTab('returns', this)">المرتجعات</button>
+                <button class="tab-btn" onclick="showTab('invoices', this)">الفواتير</button>
+            </div>
+            <div id="transactionsTable"></div>
+        </div>
+    </div>
+    <div id="closeShiftModal" class="modal">
+        <div class="modal-content">
+            <h3>تأكيد إغلاق الوردية</h3>
+            <div class="shift-summary">
+                <p>هل أنت متأكد من إغلاق الوردية الحالية؟</p>
+                <div class="summary-details">
+                    <div class="summary-row">
+                        <span>إجمالي المبيعات:</span>
+                        <span id="confirmTotalSales">0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>إجمالي المصروفات:</span>
+                        <span id="confirmTotalExpenses">0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>النقدية:</span>
+                        <span id="confirmCashAmount">0.00</span>
+                    </div>
+                    <div id="confirmCashBoxes" style="margin-top: 15px;">
+                        <!-- Cash boxes will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="confirmCloseShift()">تأكيد الإغلاق</button>
+                <button class="btn btn-secondary" onclick="closeShiftModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div id="addExpenseModal" class="modal">
+    <div class="modal-content">
+        <h3>إضافة مصروف جديد</h3>
+        <form id="expenseForm">
+            <div class="form-group">
+                <label>المبلغ</label>
+                <input type="number" id="expenseAmount" required step="0.01">
+            </div>
+            <div class="form-group">
+                <label>الوصف</label>
+                <input type="text" id="expenseDescription" required>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success">حفظ</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAddExpenseModal()">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing closing page...');
+    loadShiftData();
+    loadExpenses();
+    
+    // Initialize first tab
+    const salesTab = document.querySelector('.tab-btn');
+    if (salesTab) {
+        salesTab.click();
+    }
+});
+
+async function loadShiftData() {
+    console.log('Loading shift data...');
+    try {
+        const response = await fetch('/get_shift_summary');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Received shift data:', data);
+        
+        // Update all summary cards
+        updateSummaryCard('totalSales', data.total_sales);
+        updateSummaryCard('totalExpenses', data.total_expenses);
+        updateSummaryCard('totalReturns', data.total_returns);
+        updateSummaryCard('totalInvoices', data.total_invoices);
+        updateSummaryCard('totalDiscounts', data.total_discounts);
+        updateSummaryCard('ewalletAmount', data.ewallet_amount);
+        updateSummaryCard('visaAmount', data.visa_amount);
+        updateSummaryCard('cashAmount', data.cash_amount);
+        updateSummaryCard('delivery_pending', data.delivery_pending);
+        
+        if (document.getElementById('totalProfit')) {
+            updateSummaryCard('totalProfit', data.profit);
+        }
+        
+        // Display cash boxes
+        if (data.cash_boxes && data.cash_boxes.length > 0) {
+            displayCashBoxes(data.cash_boxes);
+        }
+    } catch (error) {
+        console.error('Error loading shift data:', error);
+    }
+}
+
+function displayCashBoxes(cashBoxes) {
+    const container = document.getElementById('cashBoxesCards');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    // Filter to show only "نقدي" cash box
+    const filteredBoxes = cashBoxes.filter(box => box.name === 'نقدي');
+    
+    filteredBoxes.forEach(box => {
+        const card = document.createElement('div');
+        card.className = 'summary-card';
+        card.innerHTML = `
+            <i class="fas fa-wallet"></i>
+            <h3>${box.name}</h3>
+            <p>${box.amount.toFixed(2)}</p>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// Helper function to update summary cards
+function updateSummaryCard(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value.toFixed(2);
+    } else {
+        console.warn(`Element with id '${id}' not found`);
+    }
+}
+
+async function loadExpenses() {
+    try {
+        const response = await fetch('/get_shift_expenses');
+        const expenses = await response.json();
+        const tbody = document.getElementById('expensesTable').querySelector('tbody');
+        tbody.innerHTML = '';
+        
+        expenses.forEach(expense => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td data-label="الوصف">${expense.description}</td>
+                <td data-label="المبلغ">${expense.amount.toFixed(2)}</td>
+                <td data-label="التاريخ">${new Date(expense.created_at).toLocaleString('ar-EG')}</td>
+                <td data-label="الإجراءات">
+                    <div class="table-actions">
+                        <button class="btn btn-warning btn-sm" onclick="editExpense(${expense.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteExpense(${expense.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Error loading expenses:', error);
+    }
+}
+
+async function showTab(tabName, btn) {
+    try {
+        const buttons = document.querySelectorAll('.tab-btn');
+        buttons.forEach(b => b.classList.remove('active'));
+        if (btn) {
+            btn.classList.add('active');
+        } else {
+            // fallback: mark first matching tab as active
+            const first = document.querySelector('.tab-btn');
+            if (first) first.classList.add('active');
+        }
+
+        const response = await fetch(`/get_shift_${tabName}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        const table = document.getElementById('transactionsTable');
+        
+        let html = `
+            <table class="transactions-table">
+                <thead>
+                    <tr>
+                        <th>الرقم</th>
+                        <th>التاريخ</th>
+                        <th>المبلغ</th>
+                        ${tabName === 'sales' ? '<th>الخصم</th>' : ''}
+                        ${tabName === 'sales' ? '<th>المبلغ النهائي</th>' : ''}
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        data.forEach(item => {
+            const numberDisplay = (item.number !== undefined && item.number !== null) ? item.number : item.id;
+            const dateValue = new Date(item.date).toLocaleString('ar-EG');
+            const discountCell = tabName === 'sales' ? `<td data-label="الخصم">${(item.discount_amount || 0).toFixed(2)}</td>` : '';
+            const finalCell = tabName === 'sales' ? `<td data-label="المبلغ النهائي">${(item.final_amount || 0).toFixed(2)}</td>` : '';
+            html += `
+                <tr>
+                    <td data-label="الرقم">${numberDisplay}</td>
+                    <td data-label="التاريخ">${dateValue}</td>
+                    <td data-label="المبلغ">${item.total_amount.toFixed(2)}</td>
+                    ${discountCell}
+                    ${finalCell}
+                    <td data-label="الحالة">${item.status}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        table.innerHTML = html;
+    } catch (error) {
+        console.error(`Error loading ${tabName}:`, error);
+    }
+}
+
+function showAddExpenseModal() {
+    document.getElementById('addExpenseModal').style.display = 'block';
+    document.getElementById('expenseForm').reset();
+}
+
+function closeAddExpenseModal() {
+    document.getElementById('addExpenseModal').style.display = 'none';
+}
+
+document.getElementById('expenseForm').addEventListener('submit', async function(event) {
+    event.preventDefault();
+    
+    const expense = {
+        amount: parseFloat(document.getElementById('expenseAmount').value),
+        description: document.getElementById('expenseDescription').value
+    };
+    
+    try {
+        const response = await fetch('/add_expense', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(expense)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            closeAddExpenseModal();
+            loadExpenses();
+            loadShiftData();
+        } else {
+            alert(result.error || 'حدث خطأ أثناء إضافة المصروف');
+        }
+    } catch (error) {
+        console.error('Error adding expense:', error);
+        alert('حدث خطأ أثناء إضافة المصروف');
+    }
+});
+
+async function editExpense(id) {
+    try {
+        const response = await fetch(`/get_expense/${id}`);
+        const expense = await response.json();
+        
+        document.getElementById('expenseAmount').value = expense.amount;
+        document.getElementById('expenseDescription').value = expense.description;
+        document.getElementById('expenseForm').onsubmit = async (e) => {
+            e.preventDefault();
+            await updateExpense(id);
+        };
+        
+        showAddExpenseModal();
+    } catch (error) {
+        console.error('Error loading expense:', error);
+        alert('حدث خطأ أثناء تحميل بيانات المصروف');
+    }
+}
+
+async function updateExpense(id) {
+    const expense = {
+        amount: parseFloat(document.getElementById('expenseAmount').value),
+        description: document.getElementById('expenseDescription').value
+    };
+    
+    try {
+        const response = await fetch(`/update_expense/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(expense)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            closeAddExpenseModal();
+            loadExpenses();
+            loadShiftData();
+        } else {
+            alert(result.error || 'حدث خطأ أثناء تحديث المصروف');
+        }
+    } catch (error) {
+        console.error('Error updating expense:', error);
+        alert('حدث خطأ أثناء تحديث المصروف');
+    }
+}
+
+async function deleteExpense(id) {
+    if (!confirm('هل أنت متأكد من حذف هذا المصروف؟')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/delete_expense/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            loadExpenses();
+            loadShiftData();
+        } else {
+            alert(result.error || 'حدث خطأ أثناء حذف المصروف');
+        }
+    } catch (error) {
+        console.error('Error deleting expense:', error);
+        alert('حدث خطأ أثناء حذف المصروف');
+    }
+}
+// Add these functions to your existing script section
+
+async function closeShift() {
+    try {
+        // Get current shift data
+        const response = await fetch('/get_shift_summary');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Update confirmation modal with current values
+        document.getElementById('confirmTotalSales').textContent = data.total_sales.toFixed(2);
+        document.getElementById('confirmTotalExpenses').textContent = data.total_expenses.toFixed(2);
+        document.getElementById('confirmCashAmount').textContent = data.cash_amount.toFixed(2);
+        
+        // Display cash boxes in confirmation modal
+        const confirmCashBoxesDiv = document.getElementById('confirmCashBoxes');
+        if (data.cash_boxes && data.cash_boxes.length > 0) {
+            let boxesHtml = '<h4 style="margin-bottom: 10px;">الصناديق:</h4>';
+            data.cash_boxes.forEach(box => {
+                boxesHtml += `
+                    <div class="summary-row">
+                        <span>${box.name}:</span>
+                        <span>${box.amount.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+            confirmCashBoxesDiv.innerHTML = boxesHtml;
+        } else {
+            confirmCashBoxesDiv.innerHTML = '';
+        }
+        
+        // Show confirmation modal
+        document.getElementById('closeShiftModal').style.display = 'block';
+    } catch (error) {
+        console.error('Error preparing shift closure:', error);
+        alert('حدث خطأ أثناء تحضير إغلاق الوردية');
+    }
+}
+
+function closeShiftModal() {
+    document.getElementById('closeShiftModal').style.display = 'none';
+}
+
+async function confirmCloseShift() {
+    try {
+        const response = await fetch('/close_shift', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('تم إغلاق الوردية بنجاح');
+            closeShiftModal();
+            // Reload page to show new shift data
+            window.location.reload();
+        } else {
+            throw new Error(result.error || 'Failed to close shift');
+        }
+    } catch (error) {
+        console.error('Error closing shift:', error);
+        alert('حدث خطأ أثناء إغلاق الوردية');
+    }
+}
+
+
+
+
+// Add this function after the existing closeShift function
+
+async function printShiftSummary() {
+    try {
+        const response = await fetch('/print_shift_summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to print summary');
+        }
+    } catch (error) {
+        console.error('Error printing shift summary:', error);
+        alert('حدث خطأ أثناء طباعة ملخص الوردية');
+        return false;
+    }
+    return true;
+}
+
+// Modify the existing confirmCloseShift function
+async function confirmCloseShift() {
+    try {
+        // First print the summary
+        const printSuccess = await printShiftSummary();
+        if (!printSuccess) {
+            return; // Stop if printing failed
+        }
+
+        // Then close the shift
+        const response = await fetch('/close_shift', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+            closeShiftModal();
+            window.location.reload();
+        } else {
+            throw new Error(result.error || 'Failed to close shift');
+        }
+    } catch (error) {
+        console.error('Error closing shift:', error);
+        alert('حدث خطأ أثناء إغلاق الوردية');
+    }
+}
+</script>
+{% endblock %}

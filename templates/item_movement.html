@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/item_movement.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jquery-ui.min.css') }}">
+
+<div class="item-movement-container">
+    <div class="page-header">
+        <h1>حركة الأصناف</h1>
+        <p>تحليل حركة الأصناف في الفترة المحددة</p>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="startDate">من تاريخ:</label>
+                <input type="date" id="startDate" class="date-input">
+            </div>
+            <div class="filter-group">
+                <label for="endDate">إلى تاريخ:</label>
+                <input type="date" id="endDate" class="date-input">
+            </div>
+            <div class="filter-group search-group">
+                <label for="searchInput">البحث عن صنف:</label>
+                <input type="text" id="searchInput" placeholder="اسم الصنف أو الباركود..." class="search-input">
+            </div>
+            <div class="filter-group">
+                <button id="generateReport" class="btn-primary">
+                    <i class="fas fa-search"></i>
+                    عرض التقرير
+                </button>
+                <button id="exportExcel" class="btn-secondary">
+                    <i class="fas fa-file-excel"></i>
+                    تصدير Excel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards" id="summaryCards" style="display: none;">
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="card-content">
+                <h3 id="totalItems">0</h3>
+                <p>إجمالي الأصناف</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-plus-circle"></i>
+            </div>
+            <div class="card-content">
+                <h3 id="totalReceived">0</h3>
+                <p>الوارد في الفترة</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-minus-circle"></i>
+            </div>
+            <div class="card-content">
+                <h3 id="totalSold">0</h3>
+                <p>المباع في الفترة</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="card-content">
+                <h3 id="totalInventoryValue">0.00</h3>
+                <p>قيمة المخزون الحالي</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="results-section">
+        <div class="table-container">
+            <table id="movementTable" class="movement-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>الباركود</th>
+                        <th>اسم الصنف</th>
+                        <th>الفئة</th>
+                        <th>التاجر</th>
+                        <th>الرصيد قبل الفترة</th>
+                        <th>الوارد</th>
+                        <th>المباع</th>
+                        <th>عدد الفواتير</th>
+                        <th>الرصيد الحالي</th>
+                        <th>سعر الشراء</th>
+                        <th>سعر البيع</th>
+                        <th>قيمة المخزون الحالي</th>
+                        <th>قيمة المخزون بعد البيع</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>جاري تحميل البيانات...</p>
+        </div>
+
+        <!-- No data message -->
+        <div id="noDataMessage" class="no-data-message" style="display: none;">
+            <i class="fas fa-inbox"></i>
+            <h3>لا توجد بيانات</h3>
+            <p>لا توجد أصناف في الفترة المحددة</p>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/jquery-3.7.1.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/jquery-ui.min.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const searchInput = document.getElementById('searchInput');
+    const generateReportBtn = document.getElementById('generateReport');
+    const exportExcelBtn = document.getElementById('exportExcel');
+    const movementTable = document.getElementById('movementTable');
+    const tableBody = document.getElementById('tableBody');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const noDataMessage = document.getElementById('noDataMessage');
+    const summaryCards = document.getElementById('summaryCards');
+
+    // Summary elements
+    const totalItemsEl = document.getElementById('totalItems');
+    const totalReceivedEl = document.getElementById('totalReceived');
+    const totalSoldEl = document.getElementById('totalSold');
+    const totalInventoryValueEl = document.getElementById('totalInventoryValue');
+
+    // Initialize dates to current month
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    startDateInput.value = firstDayOfMonth.toISOString().split('T')[0];
+    endDateInput.value = today.toISOString().split('T')[0];
+
+    // Event listeners
+    generateReportBtn.addEventListener('click', generateReport);
+    exportExcelBtn.addEventListener('click', exportToExcel);
+    searchInput.addEventListener('input', debounce(searchItems, 500));
+
+    // Enter key on search
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            generateReport();
+        }
+    });
+
+    async function generateReport() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const searchTerm = searchInput.value.trim();
+
+        console.log('Generating report with:', { startDate, endDate, searchTerm }); // Debug log
+
+        if (!startDate || !endDate) {
+            alert('يرجى تحديد تاريخ البداية وتاريخ النهاية');
+            return;
+        }
+
+        if (new Date(startDate) > new Date(endDate)) {
+            alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+            return;
+        }
+
+        showLoading();
+
+        try {
+            const params = new URLSearchParams({
+                start_date: startDate,
+                end_date: endDate,
+                search: searchTerm
+            });
+
+            console.log('API URL:', `/api/item_movement_data?${params}`); // Debug log
+
+            const response = await fetch(`/api/item_movement_data?${params}`);
+            const result = await response.json();
+
+            console.log('API Response:', result); // Debug log
+
+            if (result.success) {
+                displayResults(result.data);
+                updateSummary(result.data);
+                hideLoading(); // Move hideLoading here after data is displayed
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error generating report:', error);
+            alert('حدث خطأ أثناء تحميل البيانات: ' + error.message);
+            showNoData();
+            hideLoading(); // Keep hideLoading in catch for error cases
+        } finally {
+            // Remove hideLoading from finally since it's now called after successful display
+        }
+    }
+
+    function displayResults(data) {
+        tableBody.innerHTML = '';
+
+        if (data.length === 0) {
+            showNoData();
+            return;
+        }
+
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.barcode}</td>
+                <td>${item.name}</td>
+                <td>${item.category}</td>
+                <td>${item.trader}</td>
+                <td class="number-cell">${item.stock_before.toLocaleString()}</td>
+                <td class="number-cell">${item.received.toLocaleString()}</td>
+                <td class="number-cell">${item.sold.toLocaleString()}</td>
+                <td class="number-cell">${(item.invoices_count || 0).toLocaleString()}</td>
+                <td class="number-cell">${item.current_stock.toLocaleString()}</td>
+                <td class="number-cell">${item.buy_price.toFixed(2)}</td>
+                <td class="number-cell">${item.sell_price.toFixed(2)}</td>
+                <td class="number-cell">${item.current_inventory_value.toFixed(2)}</td>
+                <td class="number-cell">${item.inventory_after_sales.toFixed(2)}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        movementTable.style.display = 'table';
+        summaryCards.style.display = 'grid';
+        noDataMessage.style.display = 'none';
+    }
+
+    function updateSummary(data) {
+        const totals = data.reduce((acc, item) => ({
+            items: acc.items + 1,
+            received: acc.received + item.received,
+            sold: acc.sold + item.sold,
+            inventoryValue: acc.inventoryValue + item.current_inventory_value
+        }), { items: 0, received: 0, sold: 0, inventoryValue: 0 });
+
+        totalItemsEl.textContent = totals.items.toLocaleString();
+        totalReceivedEl.textContent = totals.received.toLocaleString();
+        totalSoldEl.textContent = totals.sold.toLocaleString();
+        totalInventoryValueEl.textContent = totals.inventoryValue.toFixed(2);
+    }
+
+    function searchItems() {
+        console.log('Search triggered with term:', searchInput.value.trim()); // Debug log
+        // Debounced search - generate report with current search term
+        generateReport();
+    }
+
+    function exportToExcel() {
+        // Simple CSV export
+        const rows = [[]];
+        const headers = movementTable.querySelectorAll('thead th');
+        headers.forEach(header => rows[0].push(header.textContent));
+
+        const dataRows = movementTable.querySelectorAll('tbody tr');
+        dataRows.forEach(row => {
+            const rowData = [];
+            row.querySelectorAll('td').forEach(cell => rowData.push(cell.textContent));
+            rows.push(rowData);
+        });
+
+        const csvContent = rows.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `item_movement_${startDateInput.value}_to_${endDateInput.value}.csv`;
+        link.click();
+    }
+
+    function showLoading() {
+        loadingIndicator.style.display = 'block';
+        movementTable.style.display = 'none';
+        summaryCards.style.display = 'none';
+        noDataMessage.style.display = 'none';
+    }
+
+    function hideLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function showNoData() {
+        movementTable.style.display = 'none';
+        summaryCards.style.display = 'none';
+        noDataMessage.style.display = 'flex';
+    }
+
+    // Utility function for debouncing
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Generate initial report on page load
+    generateReport();
+});
+</script>
+
+{% endblock %}
