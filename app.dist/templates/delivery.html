@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="{{ url_for('static', filename='js/homedlivmodal.js') }}"></script>
+
+<div class="delivery-page">
+    <div class="delivery-wrapper">
+        <div class="delivery-header">
+            <h5 class="delivery-title">متابعة طلبات التوصيل</h5>
+            <a href="{{ url_for('Home') }}" class="back-button">
+                <i class="fas fa-arrow-right"></i> العودة
+            </a>
+        </div>
+        
+        <div class="delivery-container">
+            <div class="delivery-control-panel">
+                <div class="control-panel-content">
+                    <div class="form-group mb-4">
+                        <select id="deliveryWorkerSelect" class="form-control">
+                            <option value="">اختر عامل التوصيل</option>
+                        </select>
+                        <button id="loadDeliveryOrders" class="btn btn-info w-100 mt-3">
+                            <i class="fas fa-sync-alt"></i> عرض الطلبات
+                        </button>
+                    </div>
+                    
+                    <div class="delivery-stats">
+                        <div class="stat-item">
+                            <label>عدد الطلبات:</label>
+                            <h4 id="ordersCount">0</h4>
+                        </div>
+                        <div class="stat-item">
+                            <label>إجمالي المبالغ:</label>
+                            <h4 id="totalAmount">0.00</h4>
+                        </div>
+                    </div>
+
+                    <a href="{{ url_for('delivery_fees_by_worker') }}" class="btn btn-primary w-100 mt-3">
+                        <i class="fas fa-calculator"></i> حساب رسوم التوصيل
+                    </a>
+
+                    <button id="markAsPaidBtn" class="btn btn-success w-100 mt-3">
+                        <i class="fas fa-check-circle"></i> تحصيل المبالغ المحددة
+                    </button>
+                </div>
+            </div>
+
+            <div class="delivery-content">
+                <div class="orders-section">
+                    <div class="table-responsive">
+                        <table id="deliveryOrdersTable" class="table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>مندوب التوصيل</th>
+                                    <th>العميل</th>
+                                    <th>الهاتف</th>
+                                    <th>المبلغ</th>
+                                    <th>التوصيل</th>
+                                    <th>الدفع</th>
+                                    <th>التاريخ</th>
+                                    <th>تفاصيل</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deliveryOrdersList"></tbody>
+                        </table>
+                    </div>
+                    <div id="noOrdersMessage" class="text-center p-3" style="display: none;">
+                        لا توجد طلبات توصيل معلقة
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <div id="customerDetails" class="mb-3" style="display: none;"></div>
+                    <div id="orderItems" class="mb-3" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/delivery.css') }}">
+<script src="{{ url_for('static', filename='js/delivery.js') }}"></script>
+{% endblock %}

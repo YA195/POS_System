@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}الرئيسية - نقطة البيع{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='items.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='categories.css') }}">
+
+<div class="sales-container">
+    <!-- Right Section - Fixed -->
+    <div class="sales-form">
+        <div class="search-section">
+            <label class="checkbox-label">
+                <input type="checkbox" id="manualBarcodeCheck">
+                إدخال يدوي للباركود (F8)
+            </label>
+            <div class="form-group">
+                <input type="text" id="barcodeInput" placeholder=" " autofocus>
+                <label for="barcodeInput">باركود المنتج</label>
+            </div>
+            <div class="form-group">
+                <input type="text" id="productName" placeholder=" ">
+                <label for="productName">اسم المنتج</label>
+            </div>
+            <div class="delivery-section">
+                <h3>بيانات التوصيل</h3>
+                <div class="form-group">
+                    <input type="tel" 
+                           id="phoneNumber" 
+                           name="phoneNumber"
+                           placeholder="رقم الهاتف" 
+                           maxlength="11" 
+                           pattern="[0-9]{11}"
+                           class="form-control"
+                           autocomplete="off">
+                    <div id="phoneSearchResults" class="search-results"></div>  <!-- Changed to match product search style -->
+                </div>
+                <div class="form-group">
+                    <input type="text" id="customerName" placeholder=" ">
+                    <label for="customerName">اسم العميل</label>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="addressLine1" placeholder=" ">
+                    <label for="addressLine1">العنوان</label>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="addressLine2" placeholder=" ">
+                    <label for="addressLine2">العنوان</label>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="addressLine3" placeholder=" ">
+                    <label for="addressLine3">العنوان</label>
+                </div>
+                <div class="form-group">
+                    <select id="deliveryService" class="delivery-select">
+                        <option value="">اختر خدمة التوصيل</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+                <div class="customer-history-section" style="display:none;">
+                    <button id="showCustomerHistory" class="btn btn-info w-100 mb-3">
+                        <i class="fas fa-history"></i>
+                        سجل طلبات العميل
+                    </button>
+                </div>
+                <div class="delivery-worker-section">
+                    <a href="{{ url_for('delivery_page') }}" class="btn btn-primary w-100 mb-3">
+                        <i class="fas fa-motorcycle"></i>
+                        متابعة طلبات التوصيل
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="last-item-quantity-section">
+            <h3>كمية آخر صنف</h3>
+            <div id="lastItemQuantityDisplay" class="last-item-quantity-display">0</div>
+        </div>
+    </div>
+    <div class="quick-items">
+        <table class="quick-items-table">
+            <thead>
+                <tr>
+                    <th>الباركود</th>
+                    <th>اسم المنتج</th>
+                    <th>السعر</th>
+                </tr>
+            </thead>
+            <tbody id="quickItems">
+            </tbody>
+        </table>
+    </div>
+    <!-- Main Content Section -->
+    <div class="sales-content">
+        <div class="sales-grid">
+            <div class="table-navigation">
+                <button class="nav-btn" id="prevTable" data-tooltip="F3">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <div class="table-indicator">
+                    فاتورة <span id="currentTable">1</span> / <span id="totalTables">5</span>
+                </div>
+                <button class="nav-btn" id="nextTable" data-tooltip="F2">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <!-- Find the nav-actions div and add these buttons inside it -->
+                <div class="nav-actions">
+                    <div class="print-option">
+                        <input type="checkbox" id="printReceipt" data-table="1" data-tooltip="F9">
+                        <label for="printReceipt">طباعة</label>
+                    </div>
+                    <button class="action-btn save-btn" id="saveReceipt" data-tooltip="F10">
+                        <i class="fas fa-save"></i>
+                        حفظ
+                    </button>
+                    <button class="action-btn save-print-btn" id="savePrintReceipt" data-tooltip="F12">
+                        <i class="fas fa-print"></i>
+                        حفظ وطباعة
+                    </button>
+                    <button class="action-btn print-last-btn" id="printLastReceipt" data-tooltip="F11">
+                        <i class="fas fa-receipt"></i>
+                        طباعة آخر فاتورة
+                    </button>
+                </div>
+            </div>
+            <div class="sales-table-container">
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th>الباركود</th>
+                            <th>اسم المنتج</th>
+                            <th>الكمية</th>
+                            <th>السعر</th>
+                            <th>الإجمالي</th>
+                            <th>حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesItems">
+                    </tbody>
+                </table>
+            </div>
+            <div class="totals-section">
+                <div class="totals-grid">
+                    <div class="total-item">
+                        <label>الكمية:</label>
+                        <span id="totalQuantity">0.0</span>
+                    </div>
+                    <div class="total-item">
+                        <label>إجمالي السعر:</label>
+                        <span id="totalPrice">0.00 ج.م</span>
+                    </div>
+                    <div class="total-item">
+                        <label>الخصم:</label>
+                        <input type="number" id="discountAmount" value="0" min="0" step="1" 
+                               onfocus="this.select()" data-tooltip="F7">
+                    </div>
+                    <div class="total-item">
+                        <label>السعر النهائي:</label>
+                        <span id="finalPrice">0.00 ج.م</span>
+                    </div>
+                    <div class="total-item" style="display: none;">
+                        <label>طريقة الدفع:</label>
+                        <select id="paymentMethod" class="payment-select">
+                            <option value="">جاري التحميل...</option>
+                        </select>
+                    </div>
+                    <div class="total-item">
+                        <label>المدفوع:</label>
+                        <input type="number" 
+                               id="paidAmount" 
+                               value="0" 
+                               min="0" 
+                               step="1" 
+                               onfocus="this.select()" 
+                               data-tooltip="F8"
+                               class="tooltip-input">
+                    </div>
+                    <div class="total-item">
+                        <label>الباقي:</label>
+                        <span id="residualAmount">0.00 ج.م</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
+
+
+<div class="modal fade history-modal" id="orderHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">سجل طلبات العميل</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="customer-info mb-3">
+                    <h6>بيانات العميل:</h6>
+                    <p id="customerInfoDetails"></p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>رقم الفاتورة</th>
+                                <th>التاريخ</th>
+                                <th>المبلغ</th>
+                                <th>العنوان</th>
+                                <th>عامل التوصيل</th>
+                                <th>حالة الطلب</th>
+                                <th>تفاصيل</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderHistoryTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

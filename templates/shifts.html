@@ -8,19 +8,26 @@
     
 <!-- Shifts List -->
 <div class="shifts-list">
-    {% for shift in shifts %}
-    <div class="shift-card" onclick="loadShiftDetails('{{ shift.id }}')">
-        <div class="shift-header">
-            <span class="shift-number">رقم الوردية: {{ shift.id }}</span>
-            <span class="cashier">الكاشير: {{ shift.cashier_name }}</span>
-            <span class="time">من: {{ shift.start_time.strftime('%Y-%m-%d %I:%M %p') if shift.start_time else '' }}</span>
-            {% if shift.end_time %}
-            <span class="time">إلى: {{ shift.end_time.strftime('%Y-%m-%d %I:%M %p') }}</span>
-            {% endif %}
-            <span class="status {{ shift.status|lower }}">{{ 'نشط' if shift.status == 'active' else 'مغلق' }}</span>
+    {% if shifts and shifts|length > 0 %}
+        {% for shift in shifts %}
+        <div class="shift-card" onclick="loadShiftDetails('{{ shift.id }}')">
+            <div class="shift-header">
+                <span class="shift-number">رقم الوردية: {{ shift.id }}</span>
+                <span class="cashier">الكاشير: {{ shift.cashier_name }}</span>
+                <span class="time">من: {{ shift.start_time.strftime('%Y-%m-%d %I:%M %p') if shift.start_time else '' }}</span>
+                {% if shift.end_time %}
+                <span class="time">إلى: {{ shift.end_time.strftime('%Y-%m-%d %I:%M %p') }}</span>
+                {% endif %}
+                <span class="status {{ shift.status|lower }}">{{ 'نشط' if shift.status == 'active' else 'مغلق' }}</span>
+            </div>
         </div>
-    </div>
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <div style="text-align: center; padding: 50px; color: #666;">
+            <h3>لا توجد ورديات</h3>
+            <p>لم يتم العثور على أي ورديات في النظام</p>
+        </div>
+    {% endif %}
 </div>
 
     <!-- Shift Details Modal -->

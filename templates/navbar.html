@@ -10,7 +10,7 @@
         <ul class="nav-list" id="navList">
             {% if 'home' in session.get('permissions', []) %}
             <li class="nav-item">
-                <a href="{{ url_for('Home') }}" class="nav-link">
+                <a href="{{ url_for('main.home') }}" class="nav-link">
                     <i class="fas fa-home"></i>
                     الرئيسية
                 </a>
@@ -30,42 +30,42 @@
                 </a>
                 <div class="dropdown-content">
                     {% if 'items' in session.get('permissions', []) %}
-                    <a href="{{ url_for('items') }}">
+                    <a href="{{ url_for('items.items') }}">
                     <i class="fa-solid fa-boxes-stacked"></i>
                         المنتجات
                     </a>
                     {% endif %}
 
                     {% if 'invoice' in session.get('permissions', []) %}
-                    <a href="{{ url_for('invoice') }}">
+                    <a href="{{ url_for('invoices.invoice') }}">
                         <i class="fas fa-receipt"></i>
                         فاتورة
                     </a>
                     {% endif %}
 
                     {% if 'traders' in session.get('permissions', []) %}
-                    <a href="{{ url_for('traders') }}">
+                    <a href="{{ url_for('invoices.traders') }}">
                         <i class="fas fa-user-tie"></i>
                         التجار
                     </a>
                     {% endif %}
 
                     {% if 'categories' in session.get('permissions', []) %}
-                    <a href="{{ url_for('categories') }}">
+                    <a href="{{ url_for('items.categories') }}">
                         <i class="fas fa-tags"></i>
                         الفئات
                     </a>
                     {% endif %}
 
                     {% if 'companies' in session.get('permissions', []) %}
-                    <a href="{{ url_for('companies') }}">
+                    <a href="{{ url_for('items.companies') }}">
                         <i class="fas fa-tags"></i>
                         الشركات
                     </a>
                     {% endif %}
 
                     {% if 'barcode_generator' in session.get('permissions', []) %}
-                    <a href="{{ url_for('barcode_generator') }}">
+                    <a href="{{ url_for('main.barcode_generator') }}">
                         <i class="fas fa-barcode"></i>
                         مولد الباركود
                     </a>
@@ -82,40 +82,40 @@
                     تقارير
                 </a>
                 <div class="dropdown-content">
-                    <a href="{{ url_for('reports_shifts') }}">
+                    <a href="{{ url_for('reports.reports_shifts') }}">
                         <i class="fas fa-chart-bar"></i>
                         تقارير الورديات
                     </a>
-                    <a href="{{ url_for('supplier_balances') }}">
+                    <a href="{{ url_for('invoices.supplier_balances') }}">
                         <i class="fas fa-balance-scale"></i>
                         ارصدة الموردين
                     </a>
                     {% if 'cash_boxes_report' in session.get('permissions', []) %}
-                    <a href="{{ url_for('cash_boxes_report') }}">
+                    <a href="{{ url_for('main.cash_boxes_report') }}">
                         <i class="fas fa-cash-register"></i>
                         الصناديق
                     </a>
                     {% endif %}
                     {% if 'item_movement' in session.get('permissions', []) %}
-                    <a href="{{ url_for('item_movement') }}">
+                    <a href="{{ url_for('reports.item_movement') }}">
                         <i class="fas fa-exchange-alt"></i>
                         حركة الأصناف
                     </a>
                     {% endif %}
                     {% if 'inventory_audit' in session.get('permissions', []) %}
-                    <a href="{{ url_for('inventory_audit') }}">
+                    <a href="{{ url_for('main.inventory_audit') }}">
                         <i class="fas fa-clipboard-check"></i>
                         جرد الأصناف
                     </a>
                     {% endif %}
                     {% if 'previous_audits' in session.get('permissions', []) %}
-                    <a href="{{ url_for('previous_audits') }}">
+                    <a href="{{ url_for('main.previous_audits') }}">
                         <i class="fas fa-history"></i>
                         الجرد السابقة
                     </a>
                     {% endif %}
                     {% if 'employees' in session.get('permissions', []) %}
-                    <a href="{{ url_for('employees_page') }}">
+                    <a href="{{ url_for('settings.employees') }}">
                         <i class="fas fa-users"></i>
                         المناديب
                     </a>
@@ -127,7 +127,7 @@
 
             {% if 'sales' in session.get('permissions', []) %}
             <li class="nav-item">
-                <a href="{{ url_for('sales') }}" class="nav-link">
+                <a href="{{ url_for('sales.sales') }}" class="nav-link">
                     <i class="fas fa-shopping-cart"></i>
                     الاوردرات
                 </a>
@@ -136,7 +136,7 @@
 
             {% if 'shifts' in session.get('permissions', []) %}
             <li class="nav-item">
-                <a href="{{ url_for('shifts') }}" class="nav-link">
+                <a href="{{ url_for('shifts.shifts') }}" class="nav-link">
                     <i class="fas fa-clock"></i>
                     الورديات
                 </a>
@@ -144,7 +144,7 @@
             {% endif %}
             {% if 'invoices' in session.get('permissions', []) %}
             <li class="nav-item">
-                <a href="{{ url_for('invoices_page') }}" class="nav-link">
+                <a href="{{ url_for('invoices.invoices') }}" class="nav-link">
                     <i class="fas fa-file-invoice"></i>
                     الفواتير
                 </a>
@@ -153,7 +153,7 @@
 
             {% if 'settings' in session.get('permissions', []) %}
             <li class="nav-item">
-                <a href="{{ url_for('settings') }}" class="nav-link">
+                <a href="{{ url_for('settings.settings') }}" class="nav-link">
                     <i class="fas fa-cog"></i>
                     الإعدادات
                 </a>
@@ -162,7 +162,7 @@
 
             {% if 'settings' in session.get('permissions', []) %}
             <li class="nav-item">
-                <a href="{{ url_for('activity_logs') }}" class="nav-link">
+                <a href="{{ url_for('settings.activity_logs') }}" class="nav-link">
                     <i class="fas fa-history"></i>
                     سجل النشاطات
                 </a>
@@ -171,7 +171,7 @@
 
             {% if 'closing' in session.get('permissions', []) %}
             <li class="nav-item">
-                <a href="{{ url_for('closing') }}" class="nav-link">
+                <a href="{{ url_for('shifts.closing') }}" class="nav-link">
                     <i class="fas fa-cash-register"></i>
                     اقفال
                 </a>
@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function handleLogout() {
     if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
-        window.location.href = "{{ url_for('logout') }}";
+        window.location.href = "{{ url_for('auth.logout') }}";
     }
 }
 </script>

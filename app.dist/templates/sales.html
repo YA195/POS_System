@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Supermarket POS{% endblock %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/sales.css') }}">
+
+<div class="sales-section">
+    <h1>سجل الاوردرات</h1>
+    
+    <!-- Search bar -->
+    <div class="search-container">
+        <input type="text" 
+               id="saleSearch" 
+               placeholder="البحث برقم الفاتورة..."
+               oninput="filterSales(this.value)">
+    </div>
+
+    <div class="sales-container">
+        <div class="sales-list">
+            {% if sales_list %}
+                {% for sale in sales_list %}
+                <div class="sale-item" data-sale-number="{{ sale.sale_number }}">
+                    <div class="sale-header" onclick="toggleSaleDetails('{{ sale.id }}')">
+                        <span class="sale-number">رقم الفاتورة: {{ sale.sale_number }}</span>
+                        <span class="sale-time">{{ sale.created_at.strftime('%I:%M %p - %Y-%m-%d') if sale.created_at else '' }}</span>
+                        <span class="sale-total">الإجمالي: {{ "%.2f"|format(sale.final_amount|float) }} ج.م</span>
+                        {% if sale.return_status == 'full' %}
+                            <span class="sale-status returned">مرتجع كامل</span>
+                        {% elif sale.return_status == 'partial' %}
+                            <span class="sale-status partial">مرتجع جزئي</span>
+                        {% endif %}
+                        <i class="fas fa-chevron-down expand-icon"></i>
+                    </div>
+                    <div id="sale-{{ sale.id }}" class="sale-details hidden">
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span>إجمالي السعر:</span>
+                                <span>{{ "%.2f"|format(sale.total_amount|float) }} ج.م</span>
+                            </div>
+                            {% if sale.discount_amount and sale.discount_amount > 0 %}
+                            <div class="detail-item">
+                                <span>الخصم:</span>
+                                <span>{{ "%.2f"|format(sale.discount_amount|float) }} ج.م</span>
+                            </div>
+                            {% endif %}
+                            {% if sale.delivery_fee and sale.delivery_fee > 0 %}
+                            <div class="detail-item">
+                                <span>خدمة التوصيل:</span>
+                                <span>{{ "%.2f"|format(sale.delivery_fee|float) }} ج.م</span>
+                            </div>
+                            {% endif %}
+                            {% if sale.delivery_worker_name %}
+                            <div class="detail-item">
+                                <span>مندوب التوصيل:</span>
+                                <span>{{ sale.delivery_worker_name }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="detail-item">
+                                <span>طريقة الدفع:</span>
+                                <span>{{ sale.payment_method }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Add return buttons here -->
+                        <div class="return-actions">
+                            <button class="btn btn-primary" onclick="printReceipt('{{ sale.id }}')">
+                                <i class="fas fa-print"></i> طباعة
+                            </button>
+                            {% if not sale.return_status or sale.return_status == 'none' %}
+                                <button class="btn btn-danger" onclick="showReturnModal('{{ sale.id }}', 'full')">
+                                    <i class="fas fa-undo"></i> مرتجع كامل
+                                </button>
+                                <button class="btn btn-warning" onclick="showReturnModal('{{ sale.id }}', 'partial')">
+                                    <i class="fas fa-undo-alt"></i> مرتجع جزئي
+                                </button>
+                            {% elif sale.return_status == 'full' %}
+
+                            {% endif %}
+                        </div>
+
+                        {% if sale.sale_items %}
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>الكمية</th>
+                                    <th>السعر</th>
+                                    <th>الإجمالي</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in sale.sale_items %}
+                                <tr class="{% if item.is_returned %}returned-item{% elif item.returned_quantity > 0 %}partial-returned-item{% endif %}">
+                                    <td>
+                                        {% if item.is_returned %}
+                                            <i class="fas fa-undo return-icon"></i>
+                                        {% elif item.returned_quantity > 0 %}
+                                            <i class="fas fa-undo-alt return-icon partial"></i>
+                                        {% endif %}
+                                        {{ item.item_name }}
+                                    </td>
+                                    <td>
+                                        {{ "%.2f"|format(item.quantity|float) }}
+                                        {% if item.returned_quantity > 0 and not item.is_returned %}
+                                            <span class="returned-qty">(مرتجع: {{ "%.2f"|format(item.returned_quantity|float) }})</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ "%.2f"|format(item.unit_price|float) }} ج.م</td>
+                                    <td>{{ "%.2f"|format(item.total_price|float) }} ج.م</td>
+                                    <td>
+                                        <span class="status-badge {% if item.is_returned %}returned{% elif item.returned_quantity > 0 %}partial-returned{% else %}active{% endif %}">
+                                            {% if item.is_returned %}
+                                                مرتجع
+                                            {% elif item.returned_quantity > 0 %}
+                                                مرتجع جزئي
+                                            {% else %}
+                                                مكتمل
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-sales">لا توجد مبيعات في الوردية الحالية</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="returnModal" class="modal">
+        <div class="modal-content">
+            <h3>مرتجع بيع</h3>
+            <div id="returnForm">
+                <div class="form-group">
+                    <label>سبب المرتجع:</label>
+                    <input type="text" id="returnReason" required>
+                </div>
+                
+                <div id="partialReturnItems" style="display: none;">
+                    <table class="return-items-table">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الكمية المباعة</th>
+                                <th>كمية المرتجع</th>
+                                <th>السعر</th>
+                            </tr>
+                        </thead>
+                        <tbody id="returnItemsList"></tbody>
+                    </table>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-success" onclick="submitReturn()">تأكيد المرتجع</button>
+                    <button class="btn btn-secondary" onclick="closeReturnModal()">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+// Add to your existing script section
+async function printReceipt(saleId) {
+    try {
+        const response = await fetch(`/print_receipt/${saleId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('success', 'تم إرسال الفاتورة للطباعة');
+        } else {
+            showAlert('error', data.error || 'حدث خطأ أثناء الطباعة');
+        }
+    } catch (error) {
+        console.error('Error printing receipt:', error);
+        showAlert('error', 'حدث خطأ أثناء الطباعة');
+    }
+}
+
+// Add this alert function if you don't have it
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+    `;
+
+    const container = document.querySelector('.sales-section');
+    container.insertBefore(alertDiv, container.firstChild);
+
+    setTimeout(() => alertDiv.remove(), 3000);
+}
+
+function toggleSaleDetails(saleId) {
+    const detailsElement = document.getElementById(`sale-${saleId}`);
+    const icon = detailsElement.parentElement.querySelector('.expand-icon');
+    
+    detailsElement.classList.toggle('hidden');
+    icon.classList.toggle('rotated');
+}
+
+function filterSales(searchValue) {
+    const saleItems = document.querySelectorAll('.sale-item');
+    
+    saleItems.forEach(item => {
+        const saleNumber = item.getAttribute('data-sale-number');
+        if (saleNumber.toString().includes(searchValue)) {
+            item.classList.remove('hidden-search');
+        } else {
+            item.classList.add('hidden-search');
+        }
+    });
+}
+
+let currentSaleId = null;
+let returnType = null;
+let saleItems = [];
+
+async function showReturnModal(saleId, type) {
+    currentSaleId = saleId;
+    returnType = type;
+    
+    // Reset form
+    document.getElementById('returnReason').value = '';
+    const modal = document.getElementById('returnModal');
+    const partialSection = document.getElementById('partialReturnItems');
+    
+    if (type === 'partial') {
+        // Load sale items for partial return
+        try {
+            const response = await fetch(`/get_sale_items/${saleId}`);
+            const data = await response.json();
+            saleItems = data.items;
+            
+            const tbody = document.getElementById('returnItemsList');
+            tbody.innerHTML = saleItems.map(item => `
+                <tr>
+                    <td>${item.item_name}</td>
+                    <td>${item.quantity}</td>
+                    <td>
+                        <input type="number" 
+                               class="return-quantity" 
+                               data-item-id="${item.id}"
+                               max="${item.quantity}"
+                               min="0"
+                               step="1"
+                               value="0">
+                    </td>
+                    <td>${item.unit_price} ج.م</td>
+                </tr>
+            `).join('');
+            
+            partialSection.style.display = 'block';
+        } catch (error) {
+            console.error('Error loading sale items:', error);
+            alert('حدث خطأ أثناء تحميل تفاصيل البيع');
+            return;
+        }
+    } else {
+        partialSection.style.display = 'none';
+    }
+    
+    modal.style.display = 'block';
+}
+
+function closeReturnModal() {
+    document.getElementById('returnModal').style.display = 'none';
+    currentSaleId = null;
+    returnType = null;
+    saleItems = [];
+}
+
+async function submitReturn() {
+    const reason = document.getElementById('returnReason').value;
+    if (!reason) {
+        alert('يرجى إدخال سبب المرتجع');
+        return;
+    }
+    
+    let returnData = {
+        sale_id: currentSaleId,
+        reason: reason,
+        type: returnType
+    };
+    
+    if (returnType === 'partial') {
+        const returnItems = [];
+        document.querySelectorAll('.return-quantity').forEach(input => {
+            const quantity = parseFloat(input.value);
+            if (quantity > 0) {
+                returnItems.push({
+                    item_id: input.dataset.itemId,
+                    quantity: quantity
+                });
+            }
+        });
+        
+        if (returnItems.length === 0) {
+            alert('يرجى تحديد الأصناف المرتجعة');
+            return;
+        }
+        
+        returnData.items = returnItems;
+    }
+    
+    try {
+        const response = await fetch('/process_return', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(returnData)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('تم تسجيل المرتجع بنجاح');
+            closeReturnModal();
+            // Reload the page to show updated sales
+            location.reload();
+        } else {
+            alert(result.error || 'حدث خطأ أثناء تسجيل المرتجع');
+        }
+    } catch (error) {
+        console.error('Error processing return:', error);
+        alert('حدث خطأ أثناء تسجيل المرتجع');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="delivery-page">
+    <div class="delivery-wrapper">
+        <div class="delivery-header">
+            <h5 class="delivery-title">حساب رسوم التوصيل</h5>
+            <a href="{{ url_for('delivery_page') }}" class="back-button">
+                <i class="fas fa-arrow-right"></i> العودة
+            </a>
+        </div>
+
+        <div class="delivery-container">
+            <div class="delivery-control-panel">
+                <div class="control-panel-content">
+                    <div class="form-group mb-4">
+                        <label for="shiftSelect">الوردية:</label>
+                        <select id="shiftSelect" class="form-control">
+                            <option value="">اختر الوردية</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="deliveryWorkerFeesSelect">عامل التوصيل:</label>
+                        <select id="deliveryWorkerFeesSelect" class="form-control">
+                            <option value="">اختر عامل التوصيل</option>
+                        </select>
+                    </div>
+
+                    <button id="loadCompletedOrdersBtn" class="btn btn-info w-100 mt-3">
+                        <i class="fas fa-sync-alt"></i> عرض الطلبات المكتملة
+                    </button>
+
+                    <div class="fees-summary mt-4" style="display: none;">
+                        <div class="stat-item">
+                            <label>عدد الطلبات المكتملة:</label>
+                            <h4 id="completedOrdersCount">0</h4>
+                        </div>
+                        <div class="stat-item">
+                            <label>إجمالي رسوم التوصيل:</label>
+                            <h4 id="totalDeliveryFees">0.00 ج.م</h4>
+                        </div>
+                    </div>
+
+                    <button id="payDeliveryFeesBtn" class="btn btn-success w-100 mt-3" style="display: none;">
+                        <i class="fas fa-money-bill-wave"></i> دفع رسوم التوصيل
+                    </button>
+                </div>
+            </div>
+
+            <div class="delivery-content">
+                    <div class="completed-orders-table" style="display: none;">
+                    <h6 class="mb-3">الطلبات المكتملة</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>العميل</th>
+                                    <th>الهاتف</th>
+                                    <th>العنوان</th>
+                                    <th>المبلغ الإجمالي</th>
+                                    <th>رسوم التوصيل</th>
+                                    <th>تاريخ الإنجاز</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completedOrdersList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="noCompletedOrdersMessage" class="text-center p-3" style="display: none;">
+                    لا توجد طلبات مكتملة لهذا العامل في هذه الوردية
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/delivery.css') }}">
+<script src="{{ url_for('static', filename='js/delivery_fees_worker.js') }}"></script>
+{% endblock %}</content>
+<parameter name="filePath">f:\Market\templates\delivery_fees_by_worker.html

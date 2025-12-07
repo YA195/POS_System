@@ -1,0 +1,1089 @@
+{% extends "base.html" %}
+
+{% block title %}المنتجات - Supermarket POS{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='items.css') }}">
+<style>
+    /* Editable cells styling */
+    .editable, .editable-select {
+        cursor: pointer;
+        background-color: #f8f9fa;
+        transition: background-color 0.2s;
+    }
+    
+    .editable:hover, .editable-select:hover {
+        background-color: #e9ecef;
+    }
+    
+    .editable:focus {
+        outline: 2px solid #007bff;
+        background-color: #fff;
+    }
+    
+    /* Modified row highlighting */
+    tr.modified {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107;
+    }
+    
+    /* Category dropdown styling */
+    .category-dropdown {
+        width: 100%;
+        padding: 4px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        background-color: white;
+        font-size: 14px;
+    }
+</style>
+
+<div class="items-container">
+    <div class="search-form">
+        <input type="text" id="searchInput" placeholder="البحث باسم المنتج">
+        <select id="categoryFilter" style="max-width:220px; margin-right:12px;">
+            <option value="">كل الفئات</option>
+            {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="item-form">
+    <input type="text" id="itemId" readonly hidden>
+    <input type="number" min="0" id="barcode" placeholder="الباركود" onchange="getItemDetails(this.value)">
+
+        <input type="hidden" id="barcode2">
+        <!-- Manage barcodes modal trigger -->
+        <button class="btn" id="manageBarcodesBtn" title="إدارة الباركودات">إدارة الباركودات</button>
+        <!-- Price history button -->
+        <button class="btn" id="priceHistoryBtn" title="سجل تغيير الأسعار" style="background: #17a2b8;">سجل الأسعار</button>
+    <input type="text" id="name" placeholder="اسم المنتج">
+        
+        <select id="category">
+            <option value="">اختر الفئة</option>
+            {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+        </select>
+        
+            
+        
+        <input type="number" id="buyPrice" min="0" step="1" placeholder="سعر الشراء">
+        <input type="number" id="sellPrice" min="0" step="1" placeholder="سعر البيع">
+        <input type="number" id="quantity" placeholder="الكمية" value="0" readonly style="background-color: #f8f9fa; cursor: not-allowed;">
+        
+        <select id="trader">
+            <option value="">اختر التاجر</option>
+            {% for trader in traders %}
+            <option value="{{ trader.id }}">{{ trader.name }}</option>
+            {% endfor %}
+        </select>
+
+        <button class="btn save-btn" id="saveBtn" disabled><i class="fas fa-save"></i></button>
+        <button class="btn delete-btn" id="deleteBtn" disabled><i class="fas fa-trash"></i></button>
+
+            <div style="display: flex; align-items: center; margin-left: 10px;">
+        <input type="checkbox" id="autoBarcode" style="width: 16px; height: 16px; margin: 0;">
+        <label for="autoBarcode" style="font-size: 14px; margin-left: 5px; margin-right: 0;">باركود تلقائي (F1)</label>
+    </div>
+    </div>
+
+    <div class="items-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>الباركود</th>
+                    <th>باركود إضافي</th>
+                    <th>اسم المنتج</th>
+                    <th>الفئة</th>
+                    <th>سعر الشراء</th>
+                    <th>سعر البيع</th>
+                    <th>الكمية</th>
+                    <th>التاجر</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr data-category-id="{{ item.category_id }}" data-item-id="{{ item.id }}" data-trader-id="{{ item.trader_id }}">
+                        <td class="col-barcode">{{ item.barcode }}</td>
+                        <td class="col-barcode2">{{ item.barcode2 or '' }}</td>
+                        <td class="col-name editable" contenteditable="true">{{ item.name }}</td>
+                        <td class="col-category editable-select" data-category-id="{{ item.category_id }}" tabindex="0">{{ item.category_name }}</td>
+                        <td class="col-buy-price editable" contenteditable="true">{{ item.buy_price }}</td>
+                        <td class="col-sell-price editable" contenteditable="true">{{ item.sell_price }}</td>
+                        <td class="col-quantity">{{ item.quantity }}</td>
+                        <td class="col-trader">{{ item.trader_name }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pass categories data to JavaScript -->
+<script type="application/json" id="categoriesData">
+    {{ categories | tojson | safe }}
+</script>
+
+<script>
+    let barcodeTimer;
+    let barcodeCheckTimer;
+    
+    // Barcode input handler
+    document.getElementById('barcode').addEventListener('input', function() {
+        clearTimeout(barcodeTimer);
+        clearTimeout(barcodeCheckTimer);
+        
+        const barcodeValue = this.value.trim();
+        
+        // Clear any previous warnings
+        removeBarcodeWarning();
+        
+        if (!barcodeValue) {
+            clearFields();
+            return;
+        }
+        
+        // Check for duplicates while typing (after 500ms delay)
+        barcodeCheckTimer = setTimeout(() => {
+            checkBarcodeExists(barcodeValue);
+        }, 500);
+        
+        // Load item details after 1.5s
+        barcodeTimer = setTimeout(() => {
+            getItemDetails(barcodeValue);
+            document.getElementById('name').focus();
+        }, 1500);
+    });
+    
+    // Function to check if barcode exists
+    function checkBarcodeExists(barcode) {
+        const currentItemId = document.getElementById('itemId').value;
+        
+        fetch(`/check_barcode_exists/${encodeURIComponent(barcode)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists && data.item_id != currentItemId) {
+                    showBarcodeWarning(data.item_name);
+                } else {
+                    removeBarcodeWarning();
+                }
+            })
+            .catch(error => {
+                console.error('Error checking barcode:', error);
+            });
+    }
+    
+    // Function to show barcode duplicate warning
+    function showBarcodeWarning(itemName) {
+        removeBarcodeWarning(); // Remove any existing warning first
+        
+        const barcodeInput = document.getElementById('barcode');
+        const warning = document.createElement('div');
+        warning.id = 'barcodeWarning';
+        warning.style.cssText = `
+            color: #d9534f;
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        `;
+        warning.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>⚠️ هذا الباركود موجود بالفعل في المنتج: <strong>${itemName}</strong></span>
+        `;
+        
+        barcodeInput.parentElement.insertBefore(warning, barcodeInput.nextSibling);
+        barcodeInput.style.borderColor = '#d9534f';
+    }
+    
+    // Function to remove barcode warning
+    function removeBarcodeWarning() {
+        const warning = document.getElementById('barcodeWarning');
+        if (warning) {
+            warning.remove();
+        }
+        document.getElementById('barcode').style.borderColor = '';
+    }
+    
+    // Get item details from server
+    function getItemDetails(barcode) {
+        if (!barcode) {
+            clearFields();
+            return;
+        }
+        
+        fetch(`/get_item/${barcode}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.id) {
+                    fillFormData(data);
+                    validateForm();
+                } else {
+                    clearFields();
+                }
+            });
+    }
+    
+    // Fill form with item data
+    function fillFormData(data) {
+        document.getElementById('itemId').value = data.id;
+        document.getElementById('name').value = data.name;
+        document.getElementById('barcode').value = data.barcode || '';
+        document.getElementById('barcode2').value = data.barcode2 || '';
+        document.getElementById('category').value = data.category_id;
+        document.getElementById('buyPrice').value = data.buy_price;
+        document.getElementById('sellPrice').value = data.sell_price;
+        document.getElementById('quantity').value = data.quantity;
+        document.getElementById('trader').value = data.trader_id;
+    }
+
+
+    function validateForm(showAlerts = false) {
+    const name = document.getElementById('name').value.trim();
+    const category = document.getElementById('category').value;
+    const buyPrice = parseFloat(document.getElementById('buyPrice').value);
+    const sellPrice = parseFloat(document.getElementById('sellPrice').value);
+    const trader = document.getElementById('trader').value;
+
+    // الـ id لو فاضي يبقى منتج جديد
+    const isNewItem = !document.getElementById('itemId').value.trim();
+
+    const isValid = name && category && buyPrice && sellPrice && trader;
+
+    if (showAlerts) {
+        if (!isValid) {
+            alert("يجب ملء جميع الحقول");
+            return false;
+        }
+        if (buyPrice >= sellPrice) {
+            alert("سعر البيع يجب أن يكون أكبر من سعر الشراء");
+            return false;
+        }
+    }
+
+    // Check if there are modified rows in the table
+    const hasModifiedRows = document.querySelectorAll('.items-table tbody tr.modified').length > 0;
+    
+    // Enable save button if form is valid OR if there are modified table rows
+    document.getElementById('saveBtn').disabled = !isValid && !hasModifiedRows;
+    document.getElementById('deleteBtn').disabled = !isValid && !isNewItem;
+
+    return isValid;
+}
+// Add this at the end of your existing script section
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('barcode').focus();
+    setNextBarcode();
+        // initialize delete button correctly
+        document.getElementById('deleteBtn').disabled = true;
+
+        // F1 to toggle auto barcode checkbox
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                const checkbox = document.getElementById('autoBarcode');
+                checkbox.checked = !checkbox.checked;
+                // If now checked, immediately set next barcode
+                if (checkbox.checked) {
+                    setNextBarcode();
+                    // Focus on name input after setting barcode
+                    document.getElementById('name').focus();
+                }
+            }
+        });
+
+        // When checkbox is checked, immediately set next barcode and focus on name
+        document.getElementById('autoBarcode').addEventListener('change', function() {
+            if (this.checked) {
+                setNextBarcode();
+                document.getElementById('name').focus();
+            }
+        });
+
+        // wire manage barcodes button/modal
+        const manageBtn = document.getElementById('manageBarcodesBtn');
+        // create modal markup
+        const modalHtml = `
+        <div id="barcodesModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:2000;">
+          <div style="background:white; border-radius:10px; padding:20px; width:480px; max-width:95%; box-shadow:0 6px 18px rgba(0,0,0,0.2);">
+            <h3 style="margin-top:0;">إدارة الباركودات</h3>
+                    <p style="font-size:13px; color:#666; margin-top:4px;">أدخل حتى 6 باركودات - كل خانة لباركود واحد. سيتم حفظ القيم مفصولة بـ (,,)</p>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+                        <div style="display:flex; flex-direction:column;">
+                            <input type="text" id="barcodeInput1" placeholder="باركود 1" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column;">
+                            <input type="text" id="barcodeInput2" placeholder="باركود 2" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column;">
+                            <input type="text" id="barcodeInput3" placeholder="باركود 3" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column;">
+                            <input type="text" id="barcodeInput4" placeholder="باركود 4" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column;">
+                            <input type="text" id="barcodeInput5" placeholder="باركود 5" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                        </div>
+                        <div style="display:flex; flex-direction:column;">
+                            <input type="text" id="barcodeInput6" placeholder="باركود 6" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+                        <button id="barcodesCancel" class="btn" style="background:#6c757d; color:white;">إلغاء</button>
+                        <button id="barcodesSave" class="btn save-btn">حفظ</button>
+                    </div>
+          </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const barcodesModal = document.getElementById('barcodesModal');
+        const barcodesTextarea = document.getElementById('barcodesTextarea');
+
+        function openBarcodesModal() {
+            // load existing barcode2 into the six inputs (split by '(,,)')
+            const v = document.getElementById('barcode2').value || '';
+            const parts = v ? v.split('(,,)').filter(s => s.trim() !== '') : [];
+            for (let i = 1; i <= 6; i++) {
+                const el = document.getElementById('barcodeInput' + i);
+                el.value = parts[i-1] || '';
+            }
+            barcodesModal.style.display = 'flex';
+            document.getElementById('barcodeInput1').focus();
+        }
+
+        function closeBarcodesModal() {
+            barcodesModal.style.display = 'none';
+            // Clear any warnings in modal
+            for (let i = 1; i <= 6; i++) {
+                const warning = document.getElementById('barcodeModalWarning' + i);
+                if (warning) warning.remove();
+                document.getElementById('barcodeInput' + i).style.borderColor = '';
+            }
+        }
+
+        // Add real-time duplicate checking for modal barcode inputs
+        for (let i = 1; i <= 6; i++) {
+            const input = document.getElementById('barcodeInput' + i);
+            let modalCheckTimer;
+            
+            input.addEventListener('input', function() {
+                clearTimeout(modalCheckTimer);
+                const value = this.value.trim();
+                const inputNum = i;
+                
+                // Remove warning first
+                const existingWarning = document.getElementById('barcodeModalWarning' + inputNum);
+                if (existingWarning) existingWarning.remove();
+                this.style.borderColor = '';
+                
+                if (!value) return;
+                
+                modalCheckTimer = setTimeout(() => {
+                    checkBarcodeExistsForModal(value, inputNum);
+                }, 500);
+            });
+        }
+
+        function checkBarcodeExistsForModal(barcode, inputNum) {
+            const currentItemId = document.getElementById('itemId').value;
+            
+            fetch(`/check_barcode_exists/${encodeURIComponent(barcode)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.exists && data.item_id != currentItemId) {
+                        showModalBarcodeWarning(inputNum, data.item_name);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking barcode:', error);
+                });
+        }
+
+        function showModalBarcodeWarning(inputNum, itemName) {
+            const input = document.getElementById('barcodeInput' + inputNum);
+            const warning = document.createElement('div');
+            warning.id = 'barcodeModalWarning' + inputNum;
+            warning.style.cssText = `
+                color: #d9534f;
+                font-size: 12px;
+                margin-top: 2px;
+                grid-column: span 2;
+            `;
+            warning.innerHTML = `⚠️ موجود في: ${itemName}`;
+            
+            input.style.borderColor = '#d9534f';
+            input.parentElement.insertBefore(warning, input.nextSibling);
+        }
+
+        manageBtn.addEventListener('click', openBarcodesModal);
+        document.getElementById('barcodesCancel').addEventListener('click', closeBarcodesModal);
+        document.getElementById('barcodesSave').addEventListener('click', function() {
+            // gather up to 6 inputs, sanitize, join with '(,,)' and save to hidden input
+            const lines = [];
+            const allBarcodes = [document.getElementById('barcode').value.trim()]; // Include main barcode
+            
+            for (let i = 1; i <= 6; i++) {
+                const v = document.getElementById('barcodeInput' + i).value.trim();
+                if (v) {
+                    // Check for duplicates within the modal inputs
+                    if (allBarcodes.includes(v)) {
+                        alert(`تحذير: الباركود "${v}" مكرر! يرجى إدخال باركودات مختلفة.`);
+                        return;
+                    }
+                    allBarcodes.push(v);
+                    lines.push(v);
+                }
+            }
+            
+            const joined = lines.join('(,,)');
+            document.getElementById('barcode2').value = joined;
+            // also update visible column in table if editing an item
+            const itemId = document.getElementById('itemId').value;
+            if (itemId) {
+                const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
+                if (row) row.querySelector('.col-barcode2').textContent = joined;
+            }
+            closeBarcodesModal();
+        });
+
+        // close modal on outside click
+        barcodesModal.addEventListener('click', function(e) {
+            if (e.target === barcodesModal) closeBarcodesModal();
+        });
+
+        // ===== Price History Modal =====
+        const priceHistoryModalHtml = `
+        <div id="priceHistoryModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:2000;">
+          <div style="background:white; border-radius:10px; padding:20px; width:700px; max-width:95%; max-height:80vh; overflow-y:auto; box-shadow:0 6px 18px rgba(0,0,0,0.2);">
+            <h3 style="margin-top:0;">سجل تغيير الأسعار</h3>
+            <div id="priceHistoryContent" style="margin-top:16px;">
+                <p style="text-align:center; color:#666;">جاري التحميل...</p>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+                <button id="priceHistoryClose" class="btn" style="background:#6c757d; color:white;">إغلاق</button>
+            </div>
+          </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', priceHistoryModalHtml);
+
+        const priceHistoryModal = document.getElementById('priceHistoryModal');
+        const priceHistoryBtn = document.getElementById('priceHistoryBtn');
+
+        function openPriceHistoryModal() {
+            const itemId = document.getElementById('itemId').value;
+            const itemName = document.getElementById('name').value;
+
+            if (!itemId) {
+                alert('يرجى اختيار منتج أولاً');
+                return;
+            }
+
+            priceHistoryModal.style.display = 'flex';
+            document.getElementById('priceHistoryContent').innerHTML = '<p style="text-align:center; color:#666;">جاري التحميل...</p>';
+
+            fetch(`/get_item_price_history/${itemId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        document.getElementById('priceHistoryContent').innerHTML = `
+                            <p style="text-align:center; color:#666;">لا يوجد سجل تغيير أسعار لهذا المنتج</p>
+                        `;
+                        return;
+                    }
+
+                    let tableHtml = `
+                        <p style="margin-bottom:12px;"><strong>المنتج:</strong> ${itemName}</p>
+                        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                            <thead>
+                                <tr style="background:#f8f9fa; border-bottom:2px solid #dee2e6;">
+                                    <th style="padding:8px; text-align:right;">التاريخ</th>
+                                    <th style="padding:8px; text-align:center;">سعر الشراء القديم</th>
+                                    <th style="padding:8px; text-align:center;">سعر الشراء الجديد</th>
+                                    <th style="padding:8px; text-align:center;">سعر البيع القديم</th>
+                                    <th style="padding:8px; text-align:center;">سعر البيع الجديد</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    data.forEach((record, index) => {
+                        const buyChanged = record.old_buy_price !== record.new_buy_price;
+                        const sellChanged = record.old_sell_price !== record.new_sell_price;
+                        
+                        const buyPriceStyle = buyChanged ? 'font-weight:600; color:#dc3545;' : '';
+                        const sellPriceStyle = sellChanged ? 'font-weight:600; color:#dc3545;' : '';
+
+                        tableHtml += `
+                            <tr style="border-bottom:1px solid #dee2e6; ${index % 2 === 0 ? 'background:#f9f9f9;' : ''}">
+                                <td style="padding:8px;">${record.change_date}</td>
+                                <td style="padding:8px; text-align:center;">${record.old_buy_price.toFixed(2)}</td>
+                                <td style="padding:8px; text-align:center; ${buyPriceStyle}">${record.new_buy_price.toFixed(2)}</td>
+                                <td style="padding:8px; text-align:center;">${record.old_sell_price.toFixed(2)}</td>
+                                <td style="padding:8px; text-align:center; ${sellPriceStyle}">${record.new_sell_price.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    tableHtml += '</tbody></table>';
+                    document.getElementById('priceHistoryContent').innerHTML = tableHtml;
+                })
+                .catch(error => {
+                    console.error('Error loading price history:', error);
+                    document.getElementById('priceHistoryContent').innerHTML = `
+                        <p style="text-align:center; color:#dc3545;">حدث خطأ في تحميل السجل</p>
+                    `;
+                });
+        }
+
+        function closePriceHistoryModal() {
+            priceHistoryModal.style.display = 'none';
+        }
+
+        priceHistoryBtn.addEventListener('click', openPriceHistoryModal);
+        document.getElementById('priceHistoryClose').addEventListener('click', closePriceHistoryModal);
+
+        priceHistoryModal.addEventListener('click', function(e) {
+            if (e.target === priceHistoryModal) closePriceHistoryModal();
+        });
+        // ===== End Price History Modal =====
+    
+        // category filter wiring
+        const categoryFilter = document.getElementById('categoryFilter');
+        categoryFilter.addEventListener('change', function() {
+            const val = this.value;
+            document.querySelectorAll('.items-table tbody tr').forEach(tr => {
+                const cat = tr.getAttribute('data-category-id') || '';
+                tr.style.display = (val === '' || val === cat) ? '' : 'none';
+            });
+        });
+});
+
+document.querySelectorAll('#name, #category, #buyPrice, #sellPrice, #trader')
+    .forEach(input => input.addEventListener('input', () => validateForm()));
+                          
+
+
+    // Clear form fields
+    function clearFields() {
+        const fields = ['itemId','barcode','barcode2', 'name', 'category', 'buyPrice', 'sellPrice', 'trader'];
+        fields.forEach(field => {
+            document.getElementById(field).value = '';
+        });
+        // Set quantity to 0 for new items
+        document.getElementById('quantity').value = '0';
+        setNextBarcode();
+    }
+    function setNextBarcode() {
+        if (document.getElementById('autoBarcode').checked) {
+            fetch('/get_next_barcode')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('barcode').value = data.next_barcode;
+                })
+                .catch(error => {
+                    console.error('Error fetching next barcode:', error);
+                });
+        }
+    }
+    function clearALLFields() {
+        const fields = ['itemId','barcode','barcode2', 'name', 'category', 'buyPrice', 'sellPrice', 'trader'];
+        fields.forEach(field => {
+            document.getElementById(field).value = '';
+        });
+        // Set quantity to 0 for new items
+        document.getElementById('quantity').value = '0';
+        document.getElementById('saveBtn').disabled = true;
+        document.getElementById('deleteBtn').disabled = true;
+        setNextBarcode();
+    }
+    
+    // Keep validation only for save button
+    document.getElementById('saveBtn').addEventListener('click', function() {
+        // Check if there are modified rows in the table
+        const modifiedRows = document.querySelectorAll('.items-table tbody tr.modified');
+        
+        if (modifiedRows.length > 0) {
+            // Save table changes
+            saveTableChanges();
+        } else if (validateForm(true)) {
+            // Save form as before
+            saveItem();
+        } else {
+            alert('لا توجد تغييرات للحفظ');
+        }
+    });
+    // And for Enter key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            if (validateForm(true)) {
+                saveItem();
+            }
+        }
+    });
+
+    // Add these event listeners for the buttons
+    document.getElementById('deleteBtn').addEventListener('click', deleteItem);
+
+    // Add these functions to handle save and delete
+    function updateTable() {
+        fetch('/get_items')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('.items-table tbody');
+                const fragment = document.createDocumentFragment();
+                
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-category-id', item.category_id);
+                    row.setAttribute('data-item-id', item.id);
+                    row.setAttribute('data-trader-id', item.trader_id);
+                    row.innerHTML = `
+                        <td class="col-barcode">${item.barcode}</td>
+                        <td class="col-barcode2">${item.barcode2 || ''}</td>
+                        <td class="col-name editable" contenteditable="true">${item.name}</td>
+                        <td class="col-category editable-select" data-category-id="${item.category_id}" tabindex="0">${item.category_name}</td>
+                        <td class="col-buy-price editable" contenteditable="true">${item.buy_price}</td>
+                        <td class="col-sell-price editable" contenteditable="true">${item.sell_price}</td>
+                        <td class="col-quantity">${item.quantity}</td>
+                        <td class="col-trader">${item.trader_name}</td>
+                    `;
+                    fragment.appendChild(row);
+                });
+                
+                // Clear and update table in one operation
+                requestAnimationFrame(() => {
+                    tbody.innerHTML = '';
+                    tbody.appendChild(fragment);
+                    clearALLFields();
+                    attachTableEditHandlers(); // Re-attach edit handlers
+                    document.getElementById('barcode').focus();
+                });
+            });
+    
+        }
+    function saveItem() {
+    const itemData = {
+        id: document.getElementById('itemId').value,
+        barcode: document.getElementById('barcode').value,
+        barcode2: document.getElementById('barcode2').value,
+        name: document.getElementById('name').value,
+        category_id: document.getElementById('category').value,
+        buy_price: document.getElementById('buyPrice').value,
+        sell_price: document.getElementById('sellPrice').value,
+        quantity: document.getElementById('quantity').value,
+        trader_id: document.getElementById('trader').value
+    };
+
+    const endpoint = itemData.id ? `/update_item/${itemData.id}` : '/save_item';
+    const method = itemData.id ? 'PUT' : 'POST';
+
+    fetch(endpoint, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(itemData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            updateTable();
+            clearALLFields();
+            document.getElementById('barcode').focus();
+        } else {
+            alert(data.message || 'Failed to save item');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving item: ' + error.message);
+    });
+}
+
+function deleteItem() {
+        const itemId = document.getElementById('itemId').value;
+        
+        if(confirm("هل أنت متأكد من حذف هذا المنتج؟")) {
+            fetch(`/delete_item/${itemId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    updateTable();
+                }
+            });
+        }
+    }
+    function applyFilters() {
+        const searchTerm = document.getElementById('searchInput').value.trim();
+        const categoryVal = document.getElementById('categoryFilter').value;
+        const rows = document.querySelectorAll('.items-table tbody tr');
+
+        const searchLower = searchTerm.toLowerCase();
+        const isNumericOnly = /^\d+$/.test(searchTerm);
+
+        rows.forEach(row => {
+            const itemName = row.querySelector('.col-name') ? row.querySelector('.col-name').textContent.toLowerCase() : '';
+            const barcode = row.querySelector('.col-barcode') ? row.querySelector('.col-barcode').textContent.toLowerCase() : '';
+            const rowCat = row.getAttribute('data-category-id') || '';
+
+            let matchesSearch = true;
+
+            if (searchTerm) {
+                if (isNumericOnly) {
+                    // Numeric search: exact barcode match first
+                    matchesSearch = barcode === searchTerm;
+
+                    // Fallback to partial match
+                    if (!matchesSearch) {
+                        matchesSearch = barcode.includes(searchLower) || itemName.includes(searchLower);
+                    }
+                } else {
+                    // Text search: flexible word matching
+                    const searchWords = searchLower.split(/\s+/).filter(w => w.length > 0);
+
+                    // Check barcode for mixed alphanumeric
+                    if (barcode.includes(searchLower)) {
+                        matchesSearch = true;
+                    } else {
+                        // Check if all search words exist in name (any order)
+                        matchesSearch = searchWords.every(word => itemName.includes(word));
+                    }
+                }
+            }
+
+            const matchesCategory = (categoryVal === '' || categoryVal === rowCat);
+
+            row.style.display = (matchesSearch && matchesCategory) ? '' : 'none';
+        });
+    }
+
+// Add event listeners
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+
+// Click a row to load its barcode into the barcode textbox and populate the form
+const tbody = document.querySelector('.items-table tbody');
+if (tbody) {
+    tbody.addEventListener('click', function(e) {
+        // Don't trigger row selection if clicking on editable cells or dropdowns
+        if (e.target.classList.contains('editable') || 
+            e.target.classList.contains('editable-select') ||
+            e.target.tagName === 'SELECT') {
+            return;
+        }
+        
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        const codeCell = tr.querySelector('.col-barcode');
+        if (!codeCell) return;
+        const code = codeCell.textContent.trim();
+        if (!code) return;
+
+        // set barcode input and fetch details
+        document.getElementById('barcode').value = code;
+        getItemDetails(code);
+
+        // mark selected row visually
+        document.querySelectorAll('.items-table tbody tr').forEach(r => r.classList.remove('selected-row'));
+        tr.classList.add('selected-row');
+    });
+}
+
+// ===== TABLE EDITING FUNCTIONALITY =====
+// Load categories data from JSON script tag
+let categoriesData = JSON.parse(document.getElementById('categoriesData').textContent);
+
+function attachTableEditHandlers() {
+    const tbody = document.querySelector('.items-table tbody');
+    if (!tbody) return;
+
+    // Handle contenteditable cells (name, buy_price, sell_price)
+    tbody.querySelectorAll('.editable').forEach(cell => {
+        // Mark row as modified on input
+        cell.addEventListener('input', function() {
+            const row = this.closest('tr');
+            row.classList.add('modified');
+            // Enable save button
+            validateForm();
+        });
+
+        // Validate numbers for price fields
+        cell.addEventListener('blur', function() {
+            if (this.classList.contains('col-buy-price') || this.classList.contains('col-sell-price')) {
+                const value = parseFloat(this.textContent);
+                if (isNaN(value) || value < 0) {
+                    alert('يرجى إدخال رقم صحيح');
+                    this.focus();
+                }
+            }
+        });
+
+        // Add keyboard navigation with Ctrl + Arrow keys
+        cell.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                handleCellNavigation(e, this);
+            }
+        });
+    });
+
+    // Handle category dropdown
+    tbody.querySelectorAll('.editable-select').forEach(cell => {
+        cell.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            // Don't create dropdown if one already exists
+            if (this.querySelector('select')) return;
+            
+            const currentCategoryId = this.getAttribute('data-category-id');
+            const currentText = this.textContent.trim();
+            
+            // Create dropdown
+            const select = document.createElement('select');
+            select.className = 'category-dropdown';
+            
+            // Add empty option
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = 'اختر الفئة';
+            select.appendChild(emptyOption);
+            
+            // Add categories
+            categoriesData.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.name;
+                if (cat.id == currentCategoryId) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            
+            // Replace cell content with dropdown
+            this.textContent = '';
+            this.appendChild(select);
+            select.focus();
+            
+            // Handle selection
+            select.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const newCategoryId = this.value;
+                const newCategoryName = selectedOption.textContent;
+                
+                const cell = this.parentElement;
+                const row = cell.closest('tr');
+                
+                // Update cell
+                cell.textContent = newCategoryName;
+                cell.setAttribute('data-category-id', newCategoryId);
+                row.setAttribute('data-category-id', newCategoryId);
+                
+                // Mark as modified
+                row.classList.add('modified');
+                // Enable save button
+                validateForm();
+            });
+            
+            // Handle click outside
+            select.addEventListener('blur', function() {
+                const cell = this.parentElement;
+                if (this.value) {
+                    const selectedOption = this.options[this.selectedIndex];
+                    cell.textContent = selectedOption.textContent;
+                } else {
+                    cell.textContent = currentText;
+                }
+            });
+        });
+
+        // Add keyboard navigation with Ctrl + Arrow keys
+        cell.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                handleCellNavigation(e, this);
+            }
+        });
+    });
+}
+
+// Function to handle cell navigation with Ctrl + Arrow keys
+function handleCellNavigation(e, currentCell) {
+    const editableSelectors = '.editable, .editable-select';
+    const allEditableCells = Array.from(document.querySelectorAll('.items-table tbody ' + editableSelectors));
+    const currentIndex = allEditableCells.indexOf(currentCell);
+    
+    if (currentIndex === -1) return;
+    
+    let targetCell = null;
+    const currentRow = currentCell.closest('tr');
+    const currentCellIndex = Array.from(currentRow.cells).indexOf(currentCell);
+    
+    switch(e.key) {
+        case 'ArrowUp':
+            e.preventDefault();
+            // Find editable cell in same column, previous row
+            let prevRow = currentRow.previousElementSibling;
+            while (prevRow) {
+                const cellInColumn = prevRow.cells[currentCellIndex];
+                if (cellInColumn && (cellInColumn.classList.contains('editable') || cellInColumn.classList.contains('editable-select'))) {
+                    targetCell = cellInColumn;
+                    break;
+                }
+                prevRow = prevRow.previousElementSibling;
+            }
+            break;
+            
+        case 'ArrowDown':
+            e.preventDefault();
+            // Find editable cell in same column, next row
+            let nextRow = currentRow.nextElementSibling;
+            while (nextRow) {
+                const cellInColumn = nextRow.cells[currentCellIndex];
+                if (cellInColumn && (cellInColumn.classList.contains('editable') || cellInColumn.classList.contains('editable-select'))) {
+                    targetCell = cellInColumn;
+                    break;
+                }
+                nextRow = nextRow.nextElementSibling;
+            }
+            break;
+            
+        case 'ArrowLeft':
+            e.preventDefault();
+            // RTL: Arrow Left should go to NEXT editable cell (right side visually)
+            for (let i = currentCellIndex + 1; i < currentRow.cells.length; i++) {
+                const cell = currentRow.cells[i];
+                if (cell && (cell.classList.contains('editable') || cell.classList.contains('editable-select'))) {
+                    targetCell = cell;
+                    break;
+                }
+            }
+            break;
+            
+        case 'ArrowRight':
+            e.preventDefault();
+            // RTL: Arrow Right should go to PREVIOUS editable cell (left side visually)
+            for (let i = currentCellIndex - 1; i >= 0; i--) {
+                const cell = currentRow.cells[i];
+                if (cell && (cell.classList.contains('editable') || cell.classList.contains('editable-select'))) {
+                    targetCell = cell;
+                    break;
+                }
+            }
+            break;
+    }
+    
+    if (targetCell) {
+        targetCell.focus();
+        
+        // Make category cells focusable
+        if (targetCell.classList.contains('editable-select')) {
+            targetCell.setAttribute('tabindex', '0');
+        }
+        
+        // For contenteditable cells, select all text
+        if (targetCell.classList.contains('editable')) {
+            const range = document.createRange();
+            range.selectNodeContents(targetCell);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
+}
+
+// Function to save table changes
+function saveTableChanges() {
+    const modifiedRows = document.querySelectorAll('.items-table tbody tr.modified');
+    
+    if (modifiedRows.length === 0) {
+        alert('لا توجد تغييرات للحفظ');
+        return;
+    }
+    
+    const updates = [];
+    
+    modifiedRows.forEach(row => {
+        const itemId = row.getAttribute('data-item-id');
+        const barcode = row.querySelector('.col-barcode').textContent.trim();
+        const barcode2 = row.querySelector('.col-barcode2').textContent.trim();
+        const name = row.querySelector('.col-name').textContent.trim();
+        const categoryId = row.querySelector('.col-category').getAttribute('data-category-id');
+        const buyPrice = parseFloat(row.querySelector('.col-buy-price').textContent);
+        const sellPrice = parseFloat(row.querySelector('.col-sell-price').textContent);
+        const quantity = row.querySelector('.col-quantity').textContent.trim();
+        const traderId = row.getAttribute('data-trader-id');
+        
+        // Validate
+        if (!name || !categoryId || isNaN(buyPrice) || isNaN(sellPrice)) {
+            alert(`خطأ في البيانات للمنتج: ${name || barcode}`);
+            return;
+        }
+        
+        if (buyPrice >= sellPrice) {
+            alert(`سعر البيع يجب أن يكون أكبر من سعر الشراء للمنتج: ${name}`);
+            return;
+        }
+        
+        updates.push({
+            id: itemId,
+            barcode: barcode,
+            barcode2: barcode2,
+            name: name,
+            category_id: categoryId,
+            buy_price: buyPrice,
+            sell_price: sellPrice,
+            quantity: quantity,
+            trader_id: traderId
+        });
+    });
+    
+    if (updates.length === 0) return;
+    
+    // Save all updates
+    Promise.all(updates.map(itemData => 
+        fetch(`/update_item/${itemData.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(itemData)
+        })
+        .then(response => response.json())
+    ))
+    .then(results => {
+        const failures = results.filter(r => !r.success);
+        
+        if (failures.length > 0) {
+            alert(`فشل حفظ ${failures.length} من ${updates.length} عنصر`);
+        } else {
+            alert(`تم حفظ ${updates.length} تغيير بنجاح`);
+        }
+        
+        // Refresh table
+        updateTable();
+    })
+    .catch(error => {
+        console.error('Error saving table changes:', error);
+        alert('حدث خطأ أثناء الحفظ');
+    });
+}
+
+// Initialize table edit handlers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    attachTableEditHandlers();
+});
+
+    </script>
+{% endblock %}
+
+

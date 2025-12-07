@@ -226,7 +226,8 @@
                     fillFormData(data);
                     validateForm();
                 } else {
-                    clearFields();
+                    // Item not found - clear fields but keep the barcode
+                    clearFieldsKeepBarcode();
                 }
             });
     }
@@ -280,6 +281,9 @@
 // Add this at the end of your existing script section
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Load items on page load
+    updateTable();
+    
     document.getElementById('barcode').focus();
     setNextBarcode();
         // initialize delete button correctly
@@ -573,7 +577,7 @@ document.querySelectorAll('#name, #category, #buyPrice, #sellPrice, #trader')
                           
 
 
-    // Clear form fields
+    // Clear form fields including barcode
     function clearFields() {
         const fields = ['itemId','barcode','barcode2', 'name', 'category', 'buyPrice', 'sellPrice', 'trader'];
         fields.forEach(field => {
@@ -582,6 +586,16 @@ document.querySelectorAll('#name, #category, #buyPrice, #sellPrice, #trader')
         // Set quantity to 0 for new items
         document.getElementById('quantity').value = '0';
         setNextBarcode();
+    }
+    
+    // Clear form fields but keep the barcode (for new items)
+    function clearFieldsKeepBarcode() {
+        const fields = ['itemId','barcode2', 'name', 'category', 'buyPrice', 'sellPrice', 'trader'];
+        fields.forEach(field => {
+            document.getElementById(field).value = '';
+        });
+        // Set quantity to 0 for new items
+        document.getElementById('quantity').value = '0';
     }
     function setNextBarcode() {
         if (document.getElementById('autoBarcode').checked) {
@@ -639,23 +653,29 @@ document.querySelectorAll('#name, #category, #buyPrice, #sellPrice, #trader')
         fetch('/get_items')
             .then(response => response.json())
             .then(data => {
+                if (!data.success) {
+                    console.error('Failed to load items:', data.error);
+                    return;
+                }
+                
                 const tbody = document.querySelector('.items-table tbody');
                 const fragment = document.createDocumentFragment();
                 
-                data.forEach(item => {
+                // Use data.items instead of data
+                (data.items || []).forEach(item => {
                     const row = document.createElement('tr');
-                    row.setAttribute('data-category-id', item.category_id);
+                    row.setAttribute('data-category-id', item.category_id || '');
                     row.setAttribute('data-item-id', item.id);
-                    row.setAttribute('data-trader-id', item.trader_id);
+                    row.setAttribute('data-trader-id', item.trader_id || '');
                     row.innerHTML = `
-                        <td class="col-barcode">${item.barcode}</td>
+                        <td class="col-barcode">${item.barcode || ''}</td>
                         <td class="col-barcode2">${item.barcode2 || ''}</td>
-                        <td class="col-name editable" contenteditable="true">${item.name}</td>
-                        <td class="col-category editable-select" data-category-id="${item.category_id}" tabindex="0">${item.category_name}</td>
-                        <td class="col-buy-price editable" contenteditable="true">${item.buy_price}</td>
-                        <td class="col-sell-price editable" contenteditable="true">${item.sell_price}</td>
-                        <td class="col-quantity">${item.quantity}</td>
-                        <td class="col-trader">${item.trader_name}</td>
+                        <td class="col-name editable" contenteditable="true">${item.name || ''}</td>
+                        <td class="col-category editable-select" data-category-id="${item.category_id || ''}" tabindex="0">${item.category_name || ''}</td>
+                        <td class="col-buy-price editable" contenteditable="true">${item.buy_price || 0}</td>
+                        <td class="col-sell-price editable" contenteditable="true">${item.sell_price || 0}</td>
+                        <td class="col-quantity">${item.quantity || 0}</td>
+                        <td class="col-trader">${item.trader_name || ''}</td>
                     `;
                     fragment.appendChild(row);
                 });
@@ -668,6 +688,9 @@ document.querySelectorAll('#name, #category, #buyPrice, #sellPrice, #trader')
                     attachTableEditHandlers(); // Re-attach edit handlers
                     document.getElementById('barcode').focus();
                 });
+            })
+            .catch(error => {
+                console.error('Error loading items:', error);
             });
     
         }

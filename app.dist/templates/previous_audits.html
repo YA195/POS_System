@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/inventory_audit.css') }}">
+
+<div class="inventory-audit-container">
+    <div class="page-header">
+        <h1>الجرد السابقة</h1>
+        <p>عرض ومراجعة عمليات الجرد السابقة</p>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="search-section">
+        <div class="search-row">
+            <div class="search-group">
+                <label for="dateFilter">تاريخ الجرد:</label>
+                <input type="date" id="dateFilter" class="search-input">
+            </div>
+            <div class="search-group">
+                <label for="statusFilter">حالة الجرد:</label>
+                <select id="statusFilter" class="search-input">
+                    <option value="">الكل</option>
+                    <option value="saved">محفوظ</option>
+                    <option value="approved">معتمد</option>
+                </select>
+            </div>
+            <button id="filterBtn" class="btn-add">
+                <i class="fas fa-filter"></i>
+                فلترة
+            </button>
+        </div>
+    </div>
+
+    <!-- Audits List -->
+    <div class="audit-section">
+        <div class="table-container">
+            <table id="auditsTable" class="audit-table">
+                <thead>
+                    <tr>
+                        <th>تاريخ الجرد</th>
+                        <th>عدد الأصناف</th>
+                        <th>إجمالي العجز</th>
+                        <th>إجمالي الزيادة</th>
+                        <th>حالة الجرد</th>
+                        <th>الإجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="auditsTableBody">
+                    <!-- Rows will be added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>جاري التحميل...</p>
+        </div>
+
+        <!-- No data message -->
+        <div id="noDataMessage" class="no-data-message" style="display: block;">
+            <i class="fas fa-history"></i>
+            <h3>لا توجد جرد سابقة</h3>
+            <p>لم يتم إجراء أي عمليات جرد بعد</p>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Details Modal -->
+<div id="auditDetailsModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <span class="close">&times;</span>
+            <h2>تفاصيل الجرد - <span id="auditDate"></span></h2>
+        </div>
+        <div class="modal-body">
+            <div class="audit-summary-section">
+                <h3>ملخص الجرد</h3>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">عدد الأصناف:</span>
+                        <span class="stat-value" id="totalItems"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">إجمالي العجز:</span>
+                        <span class="stat-value" id="totalShortage"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">إجمالي الزيادة:</span>
+                        <span class="stat-value" id="totalExcess"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">حالة الجرد:</span>
+                        <span class="stat-value" id="auditStatus"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="items-section">
+                <h3>الأصناف التي بها عجز أو زيادة</h3>
+                <div class="table-container">
+                    <table id="discrepancyTable" class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>الباركود</th>
+                                <th>اسم الصنف</th>
+                                <th>الكمية السابقة</th>
+                                <th>الكمية الفعلية</th>
+                                <th>العجز</th>
+                                <th>الزيادة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="discrepancyTableBody">
+                            <!-- Rows will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="all-items-section" style="margin-top: 30px;">
+                <h3>جميع الأصناف في الجرد</h3>
+                <div class="table-container">
+                    <table id="allItemsTable" class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>الباركود</th>
+                                <th>اسم الصنف</th>
+                                <th>الكمية السابقة</th>
+                                <th>الكمية الفعلية</th>
+                                <th>العجز</th>
+                                <th>الزيادة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allItemsTableBody">
+                            <!-- Rows will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+    const dateFilter = document.getElementById('dateFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const filterBtn = document.getElementById('filterBtn');
+    const auditsTableBody = document.getElementById('auditsTableBody');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const noDataMessage = document.getElementById('noDataMessage');
+    const auditDetailsModal = document.getElementById('auditDetailsModal');
+    const closeModal = auditDetailsModal.querySelector('.close');
+
+    let allAudits = [];
+
+    function showLoading() {
+        loadingIndicator.style.display = 'block';
+        document.getElementById('auditsTable').style.display = 'none';
+        noDataMessage.style.display = 'none';
+    }
+
+    function hideLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+
+    function loadAudits() {
+        showLoading();
+        fetch('/get_previous_audits')
+            .then(response => response.json())
+            .then(data => {
+                allAudits = data.audits || [];
+                renderAuditsTable();
+                hideLoading();
+            })
+            .catch(error => {
+                console.error('Error loading audits:', error);
+                alert('حدث خطأ في تحميل الجرد السابقة');
+                hideLoading();
+            });
+    }
+
+    function renderAuditsTable() {
+        auditsTableBody.innerHTML = '';
+
+        if (allAudits.length === 0) {
+            document.getElementById('auditsTable').style.display = 'none';
+            noDataMessage.style.display = 'flex';
+            return;
+        }
+
+        // Sort audits by date (newest first)
+        allAudits.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        allAudits.forEach(audit => {
+            const row = document.createElement('tr');
+            const auditDate = new Date(audit.created_at).toLocaleDateString('ar-EG');
+            const statusText = audit.approved ? 'معتمد' : 'محفوظ';
+            const statusClass = audit.approved ? 'status-approved' : 'status-saved';
+
+            row.innerHTML = `
+                <td>${auditDate}</td>
+                <td>${audit.total_items}</td>
+                <td>${audit.total_shortage}</td>
+                <td>${audit.total_excess}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td><button class="view-btn" data-audit-id="${audit.id}">عرض التفاصيل</button></td>
+            `;
+            auditsTableBody.appendChild(row);
+        });
+
+        document.getElementById('auditsTable').style.display = 'table';
+        noDataMessage.style.display = 'none';
+
+        // Add event listeners for view buttons
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const auditId = this.getAttribute('data-audit-id');
+                // Navigate to audit details page instead of modal
+                window.location.href = `/audit_details/${auditId}`;
+            });
+        });
+    }
+
+    // Filter functionality
+    filterBtn.addEventListener('click', function() {
+        const dateValue = dateFilter.value;
+        const statusValue = statusFilter.value;
+
+        let filteredAudits = allAudits;
+
+        if (dateValue) {
+            filteredAudits = filteredAudits.filter(audit => {
+                const auditDate = new Date(audit.created_at).toISOString().split('T')[0];
+                return auditDate === dateValue;
+            });
+        }
+
+        if (statusValue) {
+            if (statusValue === 'approved') {
+                filteredAudits = filteredAudits.filter(audit => audit.approved);
+            } else if (statusValue === 'saved') {
+                filteredAudits = filteredAudits.filter(audit => !audit.approved);
+            }
+        }
+
+        // Temporarily replace allAudits for rendering
+        const originalAudits = allAudits;
+        allAudits = filteredAudits;
+        renderAuditsTable();
+        allAudits = originalAudits;
+    });
+
+    // Load audits on page load
+    loadAudits();
+});
+</script>
+
+<style>
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-label {
+    font-weight: 600;
+    color: #666;
+}
+
+.stat-value {
+    font-weight: 700;
+    color: #333;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.status-approved {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-saved {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.view-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.view-btn:hover {
+    background: #0056b3;
+}
+
+.items-section h3,
+.all-items-section h3 {
+    color: #333;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+</style>
+
+{% endblock %}

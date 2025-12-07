@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+
+{% block title %}ارصدة الموردين{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/supplier_balances.css') }}">
+<!-- Flatpickr modern datepicker -->
+<!-- using native date inputs; removed flatpickr includes to keep normal date boxes -->
+
+<div class="container-fluid reports-container">
+    <h2 class="page-title">ارصدة الموردين</h2>
+
+    <div class="row align-items-start">
+        <div class="col-12 col-md-6 mb-4">
+            <div class="card report-card filter-card">
+                <div class="filter-header">
+                    <h5 class="mb-1">تصفية الأرصدة</h5>
+                    <p class="text-muted" style="margin:0; font-size:0.95rem;">اختر الفترة والمورد لعرض الأرصدة</p>
+                </div>
+
+                <div class="filter-row" style="margin-top:10px; align-items:center;">
+                    <div class="form-group inline">
+                        <label for="traderSelect">المورد</label>
+                        <select id="traderSelect" class="form-control">
+                            <option value="">كل الموردين</option>
+                            {% for t in traders %}
+                            <option value="{{ t.id }}">{{ t.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group inline">
+                        <label for="startDate">من</label>
+                        <input id="startDate" type="date" class="form-control date-input">
+                    </div>
+
+                    <div class="form-group inline">
+                        <label for="endDate">إلى</label>
+                        <input id="endDate" type="date" class="form-control date-input">
+                    </div>
+
+                    <div class="date-actions">
+                        <button id="loadBalancesBtn" class="btn btn-primary">
+                            <i class="fas fa-search" aria-hidden="true"></i>
+                            <span style="margin-inline-start:8px">عرض الأرصدة</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 mb-4">
+            <div class="card report-card" id="balanceMetrics">
+                <h5>إجماليات</h5>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-label">اجمالي الفواتير</div>
+                        <div id="totalInvoices" class="metric-value">0.00 ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">المدفوع</div>
+                        <div id="totalPaid" class="metric-value">0.00 ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">المتبقي</div>
+                        <div id="totalRemaining" class="metric-value">0.00 ج.م</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card report-card mt-4">
+        <h5>تفاصيل الأرصدة</h5>
+        <div id="balancesTable" class="table-responsive">
+            <!-- Table will be populated by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>تسديد دفعة للمورد: <span id="supplierName"></span></h3>
+            <button class="close-btn" onclick="closePaymentModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="alert alert-info" style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-left: 4px solid #2196f3; border-radius: 4px;">
+                <i class="fas fa-info-circle" style="color: #2196f3;"></i>
+                <strong>رصيد المورد المتبقي: <span id="supplierBalance">0.00</span> ج.م</strong>
+                <p style="margin-top: 8px; margin-bottom: 0; font-size: 14px; color: #555;">سيتم توزيع المبلغ تلقائياً على أقدم الفواتير غير المدفوعة</p>
+            </div>
+            
+            <form id="paymentForm">
+                <input type="hidden" id="selectedTraderId">
+                
+                <div class="form-group">
+                    <label>اختر الصندوق:</label>
+                    <select id="cashBoxSelect" class="form-control" required>
+                        <option value="">-- اختر الصندوق --</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>المبلغ المراد دفعه:</label>
+                    <input type="number" id="paymentAmount" class="form-control" 
+                           step="0.01" min="0.01" required 
+                           placeholder="أدخل المبلغ">
+                </div>
+                
+                <div class="form-group">
+                    <label>ملاحظات (اختياري):</label>
+                    <textarea id="paymentNotes" class="form-control" rows="2" 
+                              placeholder="أضف ملاحظات إن وجدت"></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-success" id="submitPaymentBtn">
+                        <i class="fas fa-check"></i> تأكيد الدفع
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">
+                        <i class="fas fa-times"></i> إلغاء
+                    </button>
+                </div>
+            </form>
+            
+            <div id="paymentResult" style="display: none; margin-top: 20px; padding: 15px; background: #e8f5e9; border-left: 4px solid #4caf50; border-radius: 4px;">
+                <h5 style="margin-top: 0;"><i class="fas fa-check-circle" style="color: #4caf50;"></i> تم التسديد بنجاح!</h5>
+                <div id="paymentDetails"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const loadBtn = document.getElementById('loadBalancesBtn');
+    const tableContainer = document.getElementById('balancesTable');
+
+    // Set default dates: start of current year until today
+    const today = new Date();
+    const yearStartStr = `${today.getFullYear()}-01-01`;
+
+    startDateInput.value = yearStartStr;
+    endDateInput.value = today.toISOString().split('T')[0];
+
+    // Ensure trader select is available before using it
+    const traderSelect = document.getElementById('traderSelect');
+
+    // Using native date inputs. Call loadBalances() now that defaults are set.
+    loadBalances();
+
+    loadBtn.addEventListener('click', loadBalances);
+    // Reload when trader selection changes (defensive)
+    if (traderSelect) {
+        traderSelect.addEventListener('change', loadBalances);
+    }
+
+    // Ensure clicking the native date input opens the browser picker where supported
+    [startDateInput, endDateInput].forEach(inp => {
+        if (!inp) return;
+        inp.style.cursor = 'pointer';
+        inp.addEventListener('click', function(e) {
+            // Some browsers support showPicker() (Chrome/Edge). Use it if available.
+            if (typeof inp.showPicker === 'function') {
+                inp.showPicker();
+                return;
+            }
+            // Fallback: focus and send a synthetic keypress (ArrowDown) to hint the picker
+            inp.focus();
+            try {
+                const ev = new KeyboardEvent('keydown', {key: 'ArrowDown', keyCode: 40, which: 40, bubbles: true});
+                inp.dispatchEvent(ev);
+            } catch (err) {
+                // no-op
+            }
+        });
+    });
+
+    function loadBalances() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+
+        if (!startDate || !endDate) {
+            alert('يرجى اختيار تاريخ البداية والنهاية');
+            return;
+        }
+
+    // include trader_id if selected
+    const traderId = traderSelect.value;
+    const traderParam = traderId ? `&trader_id=${traderId}` : '';
+    fetch(`/get_supplier_balances?start_date=${startDate}&end_date=${endDate}${traderParam}`)
+            .then(response => response.json())
+            .then(data => {
+                updateMetrics(data);
+                renderTable(data);
+            })
+            .catch(error => {
+                console.error('Error loading balances:', error);
+                alert('حدث خطأ في تحميل الأرصدة');
+            });
+    }
+
+    function updateMetrics(data) {
+        let totalInvoices = 0;
+        let totalPaid = 0;
+        let totalRemaining = 0;
+
+        data.forEach(supplier => {
+            totalInvoices += supplier.total_subtotal;
+            totalPaid += supplier.total_paid;
+            totalRemaining += supplier.balance;
+        });
+
+        document.getElementById('totalInvoices').textContent = totalInvoices.toFixed(2) + ' ج.م';
+        document.getElementById('totalPaid').textContent = totalPaid.toFixed(2) + ' ج.م';
+        document.getElementById('totalRemaining').textContent = totalRemaining.toFixed(2) + ' ج.م';
+    }
+
+    function renderTable(data) {
+        if (data.length === 0) {
+            tableContainer.innerHTML = '<p class="text-center">لا توجد أرصدة في الفترة المحددة</p>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.className = 'data-table';
+
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>اسم المورد</th>
+                    <th>اجمالي الفواتير</th>
+                    <th>المدفوع</th>
+                    <th>المتبقي</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.map(supplier => `
+                    <tr>
+                        <td>${supplier.name}</td>
+                        <td>${supplier.total_subtotal.toFixed(2)} ج.م</td>
+                        <td>${supplier.total_paid.toFixed(2)} ج.م</td>
+                        <td>${supplier.balance.toFixed(2)} ج.م</td>
+                        <td>
+                            ${supplier.balance > 0 ? `
+                                <button class="btn btn-success btn-sm pay-btn" data-trader-id="${supplier.trader_id}" data-supplier-name="${supplier.name}" data-balance="${supplier.balance}">
+                                    <i class="fas fa-money-bill"></i> دفع
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+
+        tableContainer.innerHTML = '';
+        tableContainer.appendChild(table);
+
+        // Add event listeners for pay buttons
+        table.querySelectorAll('.pay-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const traderId = this.dataset.traderId;
+                const supplierName = this.dataset.supplierName;
+                const balance = parseFloat(this.dataset.balance);
+                showPaymentModal(traderId, supplierName, balance);
+            });
+        });
+    }
+    function showPaymentModal(traderId, supplierName, balance) {
+        document.getElementById('supplierName').textContent = supplierName;
+        document.getElementById('selectedTraderId').value = traderId;
+        document.getElementById('supplierBalance').textContent = balance.toFixed(2);
+        document.getElementById('paymentAmount').value = '';
+        document.getElementById('paymentNotes').value = '';
+        document.getElementById('paymentResult').style.display = 'none';
+        
+        // Load cash boxes
+        loadCashBoxes();
+
+        document.getElementById('paymentModal').style.display = 'block';
+    }
+
+    async function loadCashBoxes() {
+        try {
+            const response = await fetch('/get_cash_boxes');
+            const cashBoxes = await response.json();
+            
+            const select = document.getElementById('cashBoxSelect');
+            select.innerHTML = '<option value="">-- اختر الصندوق --</option>';
+            
+            cashBoxes.forEach(box => {
+                const option = document.createElement('option');
+                option.value = box.id;
+                option.textContent = `${box.name} (الرصيد: ${box.balance ? box.balance.toFixed(2) : '0.00'} ج.م)`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading cash boxes:', error);
+        }
+    }
+
+    function closePaymentModal() {
+        console.log('Closing modal');
+        document.getElementById('paymentModal').style.display = 'none';
+        document.getElementById('paymentResult').style.display = 'none';
+        document.getElementById('paymentForm').reset();
+        document.getElementById('submitPaymentBtn').disabled = false;
+        document.getElementById('submitPaymentBtn').innerHTML = '<i class="fas fa-check"></i> تأكيد الدفع';
+    }
+
+    function loadSupplierInvoices(traderId) {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const invoicesList = document.getElementById('invoicesList');
+
+        invoicesList.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+
+        fetch(`/get_invoices?trader_id=${traderId}&start_date=${startDate}&end_date=${endDate}`)
+            .then(response => response.json())
+            .then(data => {
+                // Filter invoices with remaining amount > 0
+                const unpaidInvoices = data.invoices.filter(invoice => invoice.remaining_amount > 0);
+                renderInvoicesTable(unpaidInvoices);
+            })
+            .catch(error => {
+                console.error('Error loading supplier invoices:', error);
+                invoicesList.innerHTML = '<div class="alert alert-danger">حدث خطأ في تحميل الفواتير</div>';
+            });
+    }
+
+    function renderInvoicesTable(invoices) {
+        const invoicesList = document.getElementById('invoicesList');
+
+        if (invoices.length === 0) {
+            invoicesList.innerHTML = '<div class="alert alert-info">لا توجد فواتير غير مدفوعة لهذا المورد</div>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.className = 'data-table';
+
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>اختيار</th>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ</th>
+                    <th>الإجمالي</th>
+                    <th>المدفوع</th>
+                    <th>المتبقي</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${invoices.map(invoice => `
+                    <tr class="invoice-row" data-invoice-id="${invoice.id}" data-remaining="${invoice.remaining_amount}" data-paid="${invoice.paid_amount}">
+                        <td>
+                            <input type="radio" name="selectedInvoice" value="${invoice.id}" class="invoice-radio">
+                        </td>
+                        <td>${invoice.id}</td>
+                        <td>${new Date(invoice.invoice_date).toLocaleDateString('ar-EG')}</td>
+                        <td>${invoice.total_amount.toFixed(2)} ج.م</td>
+                        <td>${invoice.paid_amount.toFixed(2)} ج.م</td>
+                        <td>${invoice.remaining_amount.toFixed(2)} ج.م</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+
+        invoicesList.innerHTML = '<h5>اختر الفاتورة المراد دفعها:</h5>';
+        invoicesList.appendChild(table);
+
+        // Add event listeners for radio buttons
+        table.querySelectorAll('.invoice-radio').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    const row = this.closest('.invoice-row');
+                    const invoiceId = row.dataset.invoiceId;
+                    const remaining = parseFloat(row.dataset.remaining);
+
+                    document.getElementById('selectedInvoiceId').value = invoiceId;
+                    document.getElementById('paymentAmount').max = remaining;
+                    document.getElementById('submitBtn').disabled = false;
+
+                    // Highlight selected row
+                    table.querySelectorAll('.invoice-row').forEach(r => r.classList.remove('selected'));
+                    row.classList.add('selected');
+
+                    // Populate amounts
+                    document.getElementById('paidAmount').value = parseFloat(row.dataset.paid || 0).toFixed(2);
+                    document.getElementById('remainingAmount').value = parseFloat(row.dataset.remaining || 0).toFixed(2);
+
+                    // Load payment history
+                    loadPaymentHistory(invoiceId);
+                }
+            });
+        });
+    }
+
+    document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const traderId = document.getElementById('selectedTraderId').value;
+        const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+        const cashBoxId = document.getElementById('cashBoxSelect').value;
+        const notes = document.getElementById('paymentNotes').value || '';
+
+        if (!traderId || !paymentAmount || !cashBoxId) {
+            alert('يرجى ملء جميع الحقول المطلوبة');
+            return;
+        }
+
+        if (paymentAmount <= 0) {
+            alert('يرجى إدخال مبلغ صحيح');
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitPaymentBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+
+        try {
+            const response = await fetch('/process_payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trader_id: traderId,
+                    amount: paymentAmount,
+                    cash_box_id: cashBoxId,
+                    notes: notes
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Show success message with payment distribution details
+                const paymentDetails = document.getElementById('paymentDetails');
+                let detailsHTML = `
+                    <div class="alert alert-success">
+                        <h5><i class="fas fa-check-circle"></i> تمت عملية الدفع بنجاح</h5>
+                        <p><strong>المبلغ المدفوع:</strong> ${paymentAmount.toFixed(2)} ج.م</p>
+                        <p><strong>تم توزيعه على ${result.payments_made.length} فاتورة:</strong></p>
+                        <ul>
+                `;
+                
+                result.payments_made.forEach(payment => {
+                    detailsHTML += `<li>فاتورة #${payment.invoice_id}: ${payment.amount.toFixed(2)} ج.م</li>`;
+                });
+                
+                detailsHTML += '</ul>';
+                
+                if (result.remaining_amount > 0) {
+                    detailsHTML += `
+                        <div class="alert alert-warning" style="margin-top: 10px; padding: 10px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>تنبيه:</strong> المبلغ المتبقي ${result.remaining_amount.toFixed(2)} ج.م زائد عن الفواتير المستحقة
+                        </div>
+                    `;
+                }
+                
+                detailsHTML += '</div>';
+                paymentDetails.innerHTML = detailsHTML;
+                document.getElementById('paymentResult').style.display = 'block';
+                
+                // Reload balances and close modal after 3 seconds
+                setTimeout(() => {
+                    closePaymentModal();
+                    loadBalances();
+                }, 3000);
+            } else {
+                alert('خطأ: ' + (result.error || 'فشل في معالجة الدفع'));
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> تأكيد الدفع';
+            }
+        } catch (error) {
+            console.error('Error processing payment:', error);
+            alert('حدث خطأ في معالجة الدفع');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-check"></i> تأكيد الدفع';
+        }
+    });
+
+    function loadPaymentHistory(invoiceId) {
+        const paymentsTable = document.getElementById('paymentsTable');
+        const paymentHistory = document.getElementById('paymentHistory');
+
+        paymentsTable.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>';
+        paymentHistory.style.display = 'block';
+
+        fetch(`/get_invoice_payments/${invoiceId}`)
+            .then(response => response.json())
+            .then(data => {
+                renderPaymentsTable(data);
+            })
+            .catch(error => {
+                console.error('Error loading payment history:', error);
+                paymentsTable.innerHTML = '<div class="alert alert-danger">حدث خطأ في تحميل تاريخ الدفعات</div>';
+            });
+    }
+
+    function renderPaymentsTable(payments) {
+        const paymentsTable = document.getElementById('paymentsTable');
+
+        if (payments.length === 0) {
+            paymentsTable.innerHTML = '<div class="alert alert-info">لا توجد دفعات سابقة لهذه الفاتورة</div>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.className = 'data-table';
+
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>المبلغ</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${payments.map(payment => `
+                    <tr>
+                        <td>${new Date(payment.payment_date).toLocaleString('ar-EG')}</td>
+                        <td>${payment.amount.toFixed(2)} ج.م</td>
+                        <td>${payment.notes || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+
+        paymentsTable.innerHTML = '';
+        paymentsTable.appendChild(table);
+    }
+
+    // Close modal when clicking the X button
+    document.querySelector('.close-btn').addEventListener('click', closePaymentModal);
+});
+</script>
+{% endblock %}

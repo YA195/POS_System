@@ -1,0 +1,115 @@
+/* Categories Container */
+.categories-container {
+    padding: 25px;
+    background: #f8f9fa;
+}
+
+/* Category Form */
+.category-form {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    width: 100%;
+}
+
+/* Category Input */
+.category-form input {
+    flex: 1;
+    min-width: 160px;
+    max-width: 300px;
+    padding: 12px 18px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    height: 50px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    background-color: #ffffff;
+    color: #2c3e50;
+}
+
+.category-form input::placeholder {
+    color: #adb5bd;
+    font-size: 14px;
+}
+
+.category-form input:focus {
+    border-color: #4dabf7;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(77, 171, 247, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Categories Table */
+.categories-table {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.categories-table table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.categories-table th,
+.categories-table td {
+    padding: 15px;
+    text-align: right;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.categories-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+    position: sticky;
+    top: 0;
+}
+
+.categories-table tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.categories-table tr:hover {
+    background-color: #f1f3f5;
+}
+
+/* Search Form */
+.search-form {
+    margin-bottom: 20px;
+}
+
+.search-form input {
+    width: 100%;
+    padding: 12px 18px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    height: 50px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.search-form input:focus {
+    border-color: #4dabf7;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(77, 171, 247, 0.1);
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .category-form {
+        flex-direction: column;
+    }
+
+    .category-form input {
+        max-width: 100%;
+    }
+}

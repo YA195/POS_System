@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}تقارير الورديات{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports_shifts.css') }}">
+
+<div class="container-fluid reports-container">
+    <h2 class="page-title">تقارير الورديات</h2>
+
+    <div class="row align-items-start">
+        <div class="date-range-inline">
+            <div class="form-group date-box">
+                <label for="reportStart">من</label>
+                <input id="reportStart" type="date" class="form-control date-input">
+            </div>
+            <div class="form-group date-box">
+                <label for="reportEnd">إلى</label>
+                <input id="reportEnd" type="date" class="form-control date-input">
+            </div>
+            <div class="date-actions">
+                <button id="runReportBtn" class="btn btn-primary">تشغيل التقرير</button>
+                <div class="preset-buttons" style="margin-right:10px;">
+                    <button class="btn btn-sm btn-secondary" id="preset7">آخر 7 أيام</button>
+                    <button class="btn btn-sm btn-secondary" id="presetToday">اليوم</button>
+                    <button class="btn btn-sm btn-secondary" id="presetMonth">هذا الشهر</button>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="col-12 col-md-6 mb-4">
+            <div class="card report-card" id="reportMetrics">
+                <h5>مؤشرات التقرير</h5>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-label">المبيعات (المعاملات)</div>
+                        <div id="metricSales" class="metric-value">{{ (initial.sales_total if initial else 0)|float|round(2) }} ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">المصاريف</div>
+                        <div id="metricExpenses" class="metric-value">{{ ((initial.shifts_expenses if initial else 0) + (initial.sales_total if initial else 0)*0)|float|round(2) }} ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">المرتجعات</div>
+                        <div id="metricReturns" class="metric-value">{{ (initial.returns_total if initial else 0)|float|round(2) }} ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">عدد الطلبات</div>
+                        <div id="metricOrders" class="metric-value">{{ (initial.orders_count if initial else 0) }}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">الفواتير</div>
+                        <div id="metricInvoices" class="metric-value">{{ (initial.invoices_total if initial else 0)|float|round(2) }} ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">الربح المقدر</div>
+                        <div id="metricProfit" class="metric-value">{{ (initial.profit_est if initial else 0)|float|round(2) }} ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">نقدي (الصناديق)</div>
+                        <div id="metricCash" class="metric-value" style="font-size: 0.9rem; line-height: 1.4;">0.00 ج.م</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">مجموع الصناديق</div>
+                        <div id="metricCashBoxesTotal" class="metric-value">0.00 ج.م</div>
+                    </div>
+                   
+                    <div class="metric">
+                        <div class="metric-label">الخصومات</div>
+                        <div id="metricDiscounts" class="metric-value">0.00 ج.م</div>
+                    </div>
+        </div>
+    </div>
+
+    <div class="card report-card mt-4">
+        <h5>تفاصيل الورديات</h5>
+        <div id="reportDetails">
+            <!-- overall shifts summary area populated by JS -->
+            <div id="shiftsSummary" class="mb-3"></div>
+            <!-- list of shifts (compact cards) -->
+            <div id="shiftsList" class="shifts-list"></div>
+        </div>
+    </div>
+
+    <div class="card report-card mt-4">
+        <h5>ملخص الأرباح والمصروفات</h5>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>إجمالي المبيعات</th>
+                        <th>تكلفة المبيعات</th>
+                        <th>المصروفات</th>
+                        <th>صافي الربح</th>
+                    </tr>
+                </thead>
+                <tbody id="profitSummaryTable">
+                    <tr>
+                        <td id="totalSalesValue" style="font-weight: 600;">0.00 ج.م</td>
+                        <td id="totalCostValue" style="font-weight: 600;">0.00 ج.م</td>
+                        <td id="totalExpensesValue" style="font-weight: 600;">0.00 ج.م</td>
+                        <td id="netProfitValue" style="font-weight: 700; font-size: 1.05rem;">0.00 ج.م</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card report-card mt-4">
+        <h5>المبيعات حسب الفئة</h5>
+        <div id="reportDetails">
+            <!-- table of aggregated sales items grouped by category -->
+            <div id="salesItemsTable" class="table-responsive mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/reports_shifts.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,344 @@
+.settings-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 1rem;
+    direction: rtl;
+}
+
+.settings-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.settings-section h2 {
+    color: #334155;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e2e8f0;
+    font-size: 1.25rem;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    max-width: 400px; /* Limit width of form groups */
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #475569;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    box-sizing: border-box; /* Prevent padding from adding to width */
+}
+
+select.form-control {
+    cursor: pointer;
+    appearance: menulist;
+    -webkit-appearance: menulist;
+    max-width: 300px;
+    padding-right: 2rem; /* Space for dropdown arrow */
+}
+
+.form-control:focus {
+    outline: none; /* Remove default outline */
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); /* Add subtle focus shadow */
+}
+
+.settings-actions {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-success {
+    background: #059669;
+    color: white;
+    margin-bottom: 20px;
+}
+
+.btn-success:hover {
+    background: #047857;
+}
+
+.btn i {
+    font-size: 1rem;
+}
+
+textarea.form-control {
+    min-height: 60px;
+    resize: vertical;
+    max-width: 100%;
+}
+
+input[type="text"].form-control,
+input[type="password"].form-control,
+input[type="tel"].form-control,
+input[type="number"].form-control {
+    max-width: 300px;
+}
+
+.users-table-container {
+    margin-top: 20px;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.users-table th,
+.users-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: right;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    overflow: auto;
+}
+
+.modal.show {
+    display: block;
+}
+
+.modal-dialog {
+    position: relative;
+    width: auto;
+    margin: 0.5rem;
+    pointer-events: none;
+}
+
+@media (min-width: 576px) {
+    .modal-dialog {
+        max-width: 500px;
+        margin: 1.75rem auto;
+    }
+}
+
+.modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    background-color: #fff;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 0.3rem;
+    outline: 0;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 5px;
+    direction: rtl;
+}
+
+.modal-content .form-control {
+    max-width: 100%; /* Allow modal inputs to be wider */
+}
+
+.modal-content .form-group {
+    margin-bottom: 1rem;
+    max-width: 100%;
+}
+
+.modal-actions {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.modal-actions button {
+    margin-left: 10px;
+}
+
+.permissions-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    margin: 0 2px;
+}
+
+.permissions-checkboxes {
+    margin-top: 10px;
+}
+
+.permissions-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Show 3 columns */
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.select-all-label {
+    display: block;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.permissions-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.permissions-list input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Add these styles to your existing settings.css file */
+
+.delivery-workers-container {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-top: 15px;
+}
+
+.workers-table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+.workers-table th,
+.workers-table td {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 1px solid #ddd;
+}
+
+.workers-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+.workers-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.workers-table td button {
+    margin: 0 5px;
+}
+
+.workers-table td button.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.workers-table td button.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+#workerModal .modal-content {
+    direction: rtl;
+}
+
+#workerModal .modal-header {
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+#workerModal .modal-footer {
+    border-top: 1px solid #dee2e6;
+    justify-content: flex-start;
+}
+
+#workerModal .form-group {
+    margin-bottom: 1rem;
+}
+
+#workerModal .form-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+#workerModal .close {
+    margin: -1rem auto -1rem -1rem;
+}
+
+/* Add responsive styles */
+@media (max-width: 768px) {
+    .workers-table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .workers-table th,
+    .workers-table td {
+        min-width: 120px;
+    }
+
+    .delivery-workers-container {
+        padding: 10px;
+    }
+}
+/* Add these styles for the modal */
+
+.modal.show {
+    display: block;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-backdrop {
+    display: none;
+}
+
+.modal-open {
+    overflow: hidden;
+}

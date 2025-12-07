@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة المناديب{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employees.css') }}">
+
+<div class="container-fluid">
+    <h2 class="page-title">إدارة المناديب</h2>
+
+    <!-- Employees Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3><i class="fas fa-users"></i> المناديب</h3>
+            <button class="btn btn-primary" onclick="showAddEmployeeModal()">
+                <i class="fas fa-plus"></i> إضافة مندوب
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="employeesTable">
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>الهاتف</th>
+                            <th>المسمى الوظيفي</th>
+                            <th>الحالة</th>
+                            <th>تاريخ الإضافة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disbursements Section -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-money-bill-wave"></i> سجل الصرف</h3>
+            <button class="btn btn-success" onclick="showAddDisbursementModal()">
+                <i class="fas fa-hand-holding-usd"></i> صرف مبلغ
+            </button>
+        </div>
+        <div class="card-body">
+            <!-- Filters -->
+            <div class="filters-row">
+                <div class="form-group">
+                    <label>الموظف:</label>
+                    <select id="filterEmployee" class="form-control" onchange="loadDisbursements()">
+                        <option value="">الكل</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>من تاريخ:</label>
+                    <input type="date" id="filterStartDate" class="form-control" onchange="loadDisbursements()">
+                </div>
+                <div class="form-group">
+                    <label>إلى تاريخ:</label>
+                    <input type="date" id="filterEndDate" class="form-control" onchange="loadDisbursements()">
+                </div>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="summary-section">
+                <h4>ملخص الصرف حسب الموظف</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="summaryTable">
+                        <thead>
+                            <tr>
+                                <th>الموظف</th>
+                                <th>الهاتف</th>
+                                <th>المسمى الوظيفي</th>
+                                <th>إجمالي المبلغ</th>
+                                <th>عدد المرات</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div id="addEmployeeModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEmployeeModal()">&times;</span>
+        <h3 id="employeeModalTitle">إضافة مندوب جديد</h3>
+        <form id="employeeForm">
+            <input type="hidden" id="employeeId">
+            
+            <div class="form-group">
+                <label for="employeeName">الاسم *</label>
+                <input type="text" id="employeeName" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="employeePhone">الهاتف</label>
+                <input type="text" id="employeePhone" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label for="employeeJobTitle">المسمى الوظيفي</label>
+                <input type="text" id="employeeJobTitle" class="form-control">
+            </div>
+
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">حفظ</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEmployeeModal()">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Disbursement Modal -->
+<div id="addDisbursementModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeDisbursementModal()">&times;</span>
+        <h3>صرف مبلغ للموظف</h3>
+        <form id="disbursementForm">
+            <div class="form-group">
+                <label for="disbursementEmployee">الموظف *</label>
+                <select id="disbursementEmployee" class="form-control" required>
+                    <option value="">اختر موظف...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="disbursementAmount">المبلغ *</label>
+                <input type="number" id="disbursementAmount" class="form-control" step="0.01" required>
+            </div>
+
+            <div class="form-group">
+                <label for="disbursementNotes">ملاحظات</label>
+                <textarea id="disbursementNotes" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                سيتم الخصم تلقائياً من صندوق نقدي
+            </div>
+
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-success">صرف</button>
+                <button type="button" class="btn btn-secondary" onclick="closeDisbursementModal()">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Disbursement Details Modal -->
+<div id="disbursementDetailsModal" class="modal">
+    <div class="modal-content wide-modal">
+        <span class="close" onclick="closeDisbursementDetailsModal()">&times;</span>
+        <h3 id="detailsEmployeeName">تفاصيل الصرف</h3>
+        <div class="table-responsive">
+            <table class="table table-striped" id="detailsTable">
+                <thead>
+                    <tr>
+                        <th>التاريخ والوقت</th>
+                        <th>المبلغ</th>
+                        <th>الملاحظات</th>
+                        <th>تم الصرف بواسطة</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/employees.js') }}"></script>
+{% endblock %}

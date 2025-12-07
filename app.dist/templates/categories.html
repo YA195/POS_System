@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}الفئات - Supermarket POS{% endblock %}
+
+{% block content %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='items.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='categories.css') }}">
+<style>
+    .tabs-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    .tab-btn {
+        padding: 12px 24px;
+        background: #f5f5f5;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .tab-btn:hover {
+        background: #e9ecef;
+    }
+    .tab-btn.active {
+        background: white;
+        border-bottom-color: #007bff;
+        color: #007bff;
+    }
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+<div class="categories-container">
+    <h2 style="margin-bottom: 20px;">إدارة الأقسام والفئات</h2>
+    
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <button class="tab-btn active" onclick="switchTab('sections')">
+            <i class="fas fa-layer-group"></i> الأقسام
+        </button>
+        <button class="tab-btn" onclick="switchTab('categories')">
+            <i class="fas fa-tags"></i> الفئات
+        </button>
+    </div>
+
+    <!-- Sections Tab -->
+    <div id="sectionsTab" class="tab-content active">
+        <div class="search-form">
+            <input type="text" id="sectionSearchInput" placeholder="البحث باسم القسم">
+        </div>
+
+        <div class="category-form">
+            <input type="text" id="sectionId" readonly hidden>
+            <input type="text" id="sectionName" placeholder="اسم القسم">
+            
+            <button class="btn save-btn" id="saveSectionBtn" disabled><i class="fas fa-save"></i></button>
+            <button class="btn delete-btn" id="deleteSectionBtn" disabled><i class="fas fa-trash"></i></button>
+        </div>
+
+        <div class="categories-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>اسم القسم</th>
+                    </tr>
+                </thead>
+                <tbody id="sectionsTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Categories Tab -->
+    <div id="categoriesTab" class="tab-content">
+        <div class="search-form">
+            <input type="text" id="searchInput" placeholder="البحث باسم الفئة">
+            <select id="sectionFilter" style="max-width:220px; margin-right:12px;">
+                <option value="">كل الأقسام</option>
+            </select>
+        </div>
+
+        <div class="category-form">
+            <input type="text" id="categoryId" readonly hidden>
+            <select id="categorySection" required>
+                <option value="">اختر القسم</option>
+            </select>
+            <input type="text" id="name" placeholder="اسم الفئة">
+            
+            <button class="btn save-btn" id="saveBtn" disabled><i class="fas fa-save"></i></button>
+            <button class="btn delete-btn" id="deleteBtn" disabled><i class="fas fa-trash"></i></button>
+        </div>
+
+        <div class="categories-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>القسم</th>
+                        <th>اسم الفئة</th>
+                    </tr>
+                </thead>
+                <tbody id="categoriesTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSections = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadSections();
+    loadCategories();
+    document.getElementById('sectionName').focus();
+    setupEventListeners();
+});
+
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected tab
+    if (tabName === 'sections') {
+        document.getElementById('sectionsTab').classList.add('active');
+        event.target.classList.add('active');
+        document.getElementById('sectionName').focus();
+    } else {
+        document.getElementById('categoriesTab').classList.add('active');
+        event.target.classList.add('active');
+        document.getElementById('name').focus();
+    }
+}
+
+function setupEventListeners() {
+    // Sections
+    document.getElementById('sectionSearchInput').addEventListener('input', handleSectionSearch);
+    document.getElementById('saveSectionBtn').addEventListener('click', handleSaveSection);
+    document.getElementById('deleteSectionBtn').addEventListener('click', handleDeleteSection);
+    document.getElementById('sectionName').addEventListener('input', () => validateSectionForm());
+    
+    // Categories
+    document.getElementById('searchInput').addEventListener('input', handleSearch);
+    document.getElementById('saveBtn').addEventListener('click', handleSave);
+    document.getElementById('deleteBtn').addEventListener('click', handleDelete);
+    document.getElementById('name').addEventListener('input', () => validateForm());
+    document.getElementById('categorySection').addEventListener('change', () => validateForm());
+    document.getElementById('sectionFilter').addEventListener('change', handleSearch);
+}
+
+// ===== SECTIONS MANAGEMENT =====
+function loadSections() {
+    fetch('/get_sections')
+        .then(response => response.json())
+        .then(sections => {
+            currentSections = sections;
+            updateSectionsTable(sections);
+            updateSectionDropdowns(sections);
+        });
+}
+
+function updateSectionsTable(sections) {
+    const tbody = document.getElementById('sectionsTableBody');
+    tbody.innerHTML = sections.map(section => `
+        <tr data-section='${JSON.stringify(section)}' onclick="selectSection(this)">
+            <td>${section.name}</td>
+        </tr>
+    `).join('');
+}
+
+function updateSectionDropdowns(sections) {
+    const dropdowns = [
+        document.getElementById('categorySection'),
+        document.getElementById('sectionFilter')
+    ];
+    
+    dropdowns.forEach(dropdown => {
+        const currentValue = dropdown.value;
+        const isFilter = dropdown.id === 'sectionFilter';
+        
+        dropdown.innerHTML = isFilter ? '<option value="">كل الأقسام</option>' : '<option value="">اختر القسم</option>';
+        
+        sections.forEach(section => {
+            const option = document.createElement('option');
+            option.value = section.id;
+            option.textContent = section.name;
+            dropdown.appendChild(option);
+        });
+        
+        if (currentValue) dropdown.value = currentValue;
+    });
+}
+
+function selectSection(row) {
+    const section = JSON.parse(row.dataset.section);
+    document.getElementById('sectionId').value = section.id;
+    document.getElementById('sectionName').value = section.name;
+    validateSectionForm();
+}
+
+function validateSectionForm(showAlerts = false) {
+    const name = document.getElementById('sectionName').value.trim();
+    const isValid = name.length > 0;
+
+    if (showAlerts && !isValid) {
+        alert("يجب إدخال اسم القسم");
+        return false;
+    }
+
+    document.getElementById('saveSectionBtn').disabled = !isValid;
+    document.getElementById('deleteSectionBtn').disabled = !isValid;
+    return isValid;
+}
+
+function clearSectionFields() {
+    document.getElementById('sectionId').value = '';
+    document.getElementById('sectionName').value = '';
+    document.getElementById('saveSectionBtn').disabled = true;
+    document.getElementById('deleteSectionBtn').disabled = true;
+}
+
+function handleSectionSearch(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#sectionsTableBody tr');
+    
+    rows.forEach(row => {
+        const name = row.cells[0].textContent.toLowerCase();
+        row.style.display = name.includes(searchTerm) ? '' : 'none';
+    });
+}
+
+function handleSaveSection() {
+    if (!validateSectionForm(true)) return;
+
+    const sectionData = {
+        id: document.getElementById('sectionId').value,
+        name: document.getElementById('sectionName').value.trim()
+    };
+
+    const method = sectionData.id ? 'PUT' : 'POST';
+    const endpoint = sectionData.id ? `/update_section/${sectionData.id}` : '/save_section';
+
+    fetch(endpoint, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sectionData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadSections();
+            loadCategories();
+            clearSectionFields();
+            document.getElementById('sectionName').focus();
+        } else {
+            alert(data.message || 'Failed to save section');
+        }
+    });
+}
+
+function handleDeleteSection() {
+    const sectionId = document.getElementById('sectionId').value;
+    if (!sectionId || !confirm("هل أنت متأكد من حذف هذا القسم؟ سيتم حذف جميع الفئات التابعة له.")) return;
+
+    fetch(`/delete_section/${sectionId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadSections();
+            loadCategories();
+            clearSectionFields();
+        } else {
+            alert(data.message || 'Failed to delete section');
+        }
+    });
+}
+
+// ===== CATEGORIES MANAGEMENT =====
+function loadCategories() {
+    fetch('/get_categories')
+        .then(response => response.json())
+        .then(categories => {
+            updateCategoriesTable(categories);
+        });
+}
+
+function updateCategoriesTable(categories) {
+    const tbody = document.getElementById('categoriesTableBody');
+    tbody.innerHTML = categories.map(category => `
+        <tr data-category='${JSON.stringify(category)}' 
+            data-section-id="${category.section_id || ''}"
+            onclick="selectCategory(this)">
+            <td>${category.section_name || 'بدون قسم'}</td>
+            <td>${category.name}</td>
+        </tr>
+    `).join('');
+}
+
+function selectCategory(row) {
+    const category = JSON.parse(row.dataset.category);
+    document.getElementById('categoryId').value = category.id;
+    document.getElementById('name').value = category.name;
+    document.getElementById('categorySection').value = category.section_id || '';
+    validateForm();
+}
+
+function validateForm(showAlerts = false) {
+    const name = document.getElementById('name').value.trim();
+    const sectionId = document.getElementById('categorySection').value;
+    const isValid = name.length > 0 && sectionId;
+
+    if (showAlerts) {
+        if (!isValid) {
+            alert("يجب إدخال اسم الفئة واختيار القسم");
+            return false;
+        }
+    }
+
+    document.getElementById('saveBtn').disabled = !isValid;
+    document.getElementById('deleteBtn').disabled = !isValid;
+    return isValid;
+}
+
+function clearFields() {
+    document.getElementById('categoryId').value = '';
+    document.getElementById('name').value = '';
+    document.getElementById('categorySection').value = '';
+    document.getElementById('saveBtn').disabled = true;
+    document.getElementById('deleteBtn').disabled = true;
+}
+
+function handleSearch(event) {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const sectionFilter = document.getElementById('sectionFilter').value;
+    const rows = document.querySelectorAll('#categoriesTableBody tr');
+    
+    rows.forEach(row => {
+        const name = row.cells[1].textContent.toLowerCase();
+        const sectionId = row.dataset.sectionId;
+        
+        const matchesSearch = name.includes(searchTerm);
+        const matchesSection = !sectionFilter || sectionId === sectionFilter;
+        
+        row.style.display = (matchesSearch && matchesSection) ? '' : 'none';
+    });
+}
+
+function handleSave() {
+    if (!validateForm(true)) return;
+
+    const categoryData = {
+        id: document.getElementById('categoryId').value,
+        name: document.getElementById('name').value.trim(),
+        section_id: document.getElementById('categorySection').value
+    };
+
+    const method = categoryData.id ? 'PUT' : 'POST';
+    const endpoint = categoryData.id ? `/update_category/${categoryData.id}` : '/save_category';
+
+    fetch(endpoint, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadCategories();
+            clearFields();
+            document.getElementById('name').focus();
+        } else {
+            alert(data.message || 'Failed to save category');
+        }
+    });
+}
+
+function handleDelete() {
+    const categoryId = document.getElementById('categoryId').value;
+    if (!categoryId || !confirm("هل أنت متأكد من حذف هذه الفئة؟")) return;
+
+    fetch(`/delete_category/${categoryId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadCategories();
+            clearFields();
+        }
+    });
+}
+</script>
+{% endblock %}
