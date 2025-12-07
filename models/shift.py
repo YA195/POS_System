@@ -40,17 +40,19 @@ class Shift:
         return cursor.fetchone()
     
     @staticmethod
-    def create(user_id, opening_balance=0):
+    def create(user_id, cashier_name, opening_balance=0):
         """Create a new shift."""
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO shifts (user_id, start_time, opening_balance)
-            VALUES (?, GETDATE(), ?);
-            SELECT SCOPE_IDENTITY() AS id
-        """, [user_id, opening_balance])
-        result = cursor.fetchone()
+            INSERT INTO shifts (user_id, cashier_name, start_time, status)
+            VALUES (?, ?, GETDATE(), 'active')
+        """, [user_id, cashier_name])
         conn.commit()
+        
+        # Get the last inserted ID
+        cursor.execute("SELECT @@IDENTITY AS id")
+        result = cursor.fetchone()
         return int(result[0]) if result else None
     
     @staticmethod

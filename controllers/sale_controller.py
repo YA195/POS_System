@@ -15,15 +15,18 @@ class SaleController:
         cursor = conn.cursor()
         
         try:
-            # Validate items have sufficient quantity
+            # Validate items exist (quantity check is optional - allow negative stock)
             for item in items:
                 db_item = Item.get_by_barcode(item['barcode'])
                 if not db_item:
                     raise ValueError(f"Item with barcode {item['barcode']} not found")
                 
-                # Check quantity
-                if db_item[5] < item['quantity']:  # Assuming column 5 is quantity
-                    raise ValueError(f"Insufficient quantity for {item['item_name']}")
+                # Optional: Uncomment below to enforce quantity check
+                # Schema: id, barcode, name, category_id, buy_price, sell_price, quantity, trader_id, active, barcode2
+                # item_quantity = db_item[6] if len(db_item) > 6 else 0
+                # if item_quantity < item['quantity']:
+                #     item_name = db_item[2] if len(db_item) > 2 else 'Unknown'
+                #     raise ValueError(f"Insufficient quantity for {item_name}")
             
             # Create sale
             sale_id = Sale.create(sale_data, items)

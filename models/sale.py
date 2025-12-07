@@ -46,34 +46,59 @@ class Sale:
         conn = get_db()
         cursor = conn.cursor()
         
-        # Insert sale record
+        # Insert sale record - match schema columns
         cursor.execute("""
             INSERT INTO daily_sales (
-                sale_number, shift_id, total_amount, discount_amount,
-                delivery_fee, final_amount, paid_amount, customer_name,
-                customer_phone, address_line1, address_line2, address_line3
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-            SELECT SCOPE_IDENTITY() AS id
+                sale_number, shift_id, total_amount, subtotal, discount_amount,
+                delivery_fee, final_amount, payment_method, paid_amount, residual_amount,
+                customer_name, customer_phone, address_line1, address_line2, address_line3,
+                cash_box_id, user_id, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed')
         """, [
-            data['sale_number'], data.get('shift_id'),
-            data['total_amount'], data.get('discount_amount', 0),
-            data.get('delivery_fee', 0), data['final_amount'],
-            data.get('paid_amount', 0), data.get('customer_name', ''),
-            data.get('customer_phone', ''), data.get('address_line1', ''),
-            data.get('address_line2', ''), data.get('address_line3', '')
+            data['sale_number'], 
+            data.get('shift_id'),
+            data['total_amount'], 
+            data.get('subtotal', data['total_amount']),
+            data.get('discount_amount', 0),
+            data.get('delivery_fee', 0), 
+            data['final_amount'],
+            data.get('payment_method', 'cash'),
+            data.get('paid_amount', 0),
+            data.get('residual_amount', 0),
+            data.get('customer_name', ''),
+            data.get('customer_phone', ''), 
+            data.get('address_line1', ''),
+            data.get('address_line2', ''), 
+            data.get('address_line3', ''),
+            data.get('cash_box_id'),
+            data.get('user_id')
         ])
+        conn.commit()
+        
+        # Get the last inserted ID
+        cursor.execute("SELECT @@IDENTITY AS id")
         result = cursor.fetchone()
         sale_id = int(result[0]) if result else None
         
         # Insert sale items
         for item in items:
+            # Get item_id from barcode
+            cursor.execute("SELECT id FROM items WHERE barcode = ?", [item['barcode']])
+            item_row = cursor.fetchone()
+            item_id = item_row[0] if item_row else None
+            
             cursor.execute("""
                 INSERT INTO daily_sale_items (
-                    sale_id, barcode, item_name, quantity, unit_price, total_price
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    sale_id, item_id, barcode, item_name, quantity, unit_price, total_price
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """, [
-                sale_id, item['barcode'], item['item_name'],
-                item['quantity'], item['unit_price'], item['total_price']
+                sale_id, 
+                item_id,
+                item['barcode'], 
+                item['name'],
+                item['quantity'], 
+                item['unit_price'], 
+                item['total_price']
             ])
         
         conn.commit()

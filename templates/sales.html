@@ -82,7 +82,7 @@
                             {% endif %}
                         </div>
 
-                        {% if sale.sale_items %}
+                        <!-- Items Table - Always show, will be populated by JavaScript -->
                         <table class="items-table">
                             <thead>
                                 <tr>
@@ -93,41 +93,10 @@
                                     <th>الحالة</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {% for item in sale.sale_items %}
-                                <tr class="{% if item.is_returned %}returned-item{% elif item.returned_quantity > 0 %}partial-returned-item{% endif %}">
-                                    <td>
-                                        {% if item.is_returned %}
-                                            <i class="fas fa-undo return-icon"></i>
-                                        {% elif item.returned_quantity > 0 %}
-                                            <i class="fas fa-undo-alt return-icon partial"></i>
-                                        {% endif %}
-                                        {{ item.item_name }}
-                                    </td>
-                                    <td>
-                                        {{ "%.2f"|format(item.quantity|float) }}
-                                        {% if item.returned_quantity > 0 and not item.is_returned %}
-                                            <span class="returned-qty">(مرتجع: {{ "%.2f"|format(item.returned_quantity|float) }})</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ "%.2f"|format(item.unit_price|float) }} ج.م</td>
-                                    <td>{{ "%.2f"|format(item.total_price|float) }} ج.م</td>
-                                    <td>
-                                        <span class="status-badge {% if item.is_returned %}returned{% elif item.returned_quantity > 0 %}partial-returned{% else %}active{% endif %}">
-                                            {% if item.is_returned %}
-                                                مرتجع
-                                            {% elif item.returned_quantity > 0 %}
-                                                مرتجع جزئي
-                                            {% else %}
-                                                مكتمل
-                                            {% endif %}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                            <tbody id="items-{{ sale.id }}">
+                                <tr><td colspan="5" style="text-align:center;">جاري التحميل...</td></tr>
                             </tbody>
                         </table>
-                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -209,8 +178,77 @@ function toggleSaleDetails(saleId) {
     const detailsElement = document.getElementById(`sale-${saleId}`);
     const icon = detailsElement.parentElement.querySelector('.expand-icon');
     
+    const isCurrentlyHidden = detailsElement.classList.contains('hidden');
+    
+    if (isCurrentlyHidden) {
+        // Load items when expanding
+        loadSaleItems(saleId);
+    }
+    
     detailsElement.classList.toggle('hidden');
     icon.classList.toggle('rotated');
+}
+
+async function loadSaleItems(saleId) {
+    console.log('Loading items for sale ID:', saleId);
+    
+    try {
+        const response = await fetch(`/get_sale_items/${saleId}`);
+        const data = await response.json();
+        
+        console.log('Response data:', data);
+        
+        if (!data.success) {
+            console.error('Error loading sale items:', data.error);
+            const itemsTable = document.getElementById(`items-${saleId}`);
+            if (itemsTable) {
+                itemsTable.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red;">خطأ: ' + (data.error || 'غير معروف') + '</td></tr>';
+            }
+            return;
+        }
+        
+        const sale = data.sale.sale;
+        const items = data.sale.items;
+        
+        console.log('Loaded items for sale', saleId, ':', items);
+        
+        // Find the items table in this sale's details
+        const itemsTable = document.getElementById(`items-${saleId}`);
+        
+        if (!itemsTable) {
+            console.error('Items table not found for sale', saleId);
+            alert('خطأ: لم يتم العثور على جدول العناصر');
+            return;
+        }
+        
+        if (!items || items.length === 0) {
+            itemsTable.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد عناصر في هذه الفاتورة</td></tr>';
+            return;
+        }
+        
+        // Schema: id, sale_id, item_id, barcode, item_name, quantity, unit_price, total_price
+        itemsTable.innerHTML = items.map(item => {
+            console.log('Processing item:', item);
+            return `
+                <tr>
+                    <td>${item[4] || 'غير معروف'}</td>
+                    <td>${parseFloat(item[5] || 0).toFixed(2)}</td>
+                    <td>${parseFloat(item[6] || 0).toFixed(2)} ج.م</td>
+                    <td>${parseFloat(item[7] || 0).toFixed(2)} ج.م</td>
+                    <td><span class="status-badge active">مكتمل</span></td>
+                </tr>
+            `;
+        }).join('');
+        
+        console.log('Items loaded successfully');
+        
+    } catch (error) {
+        console.error('Error loading sale items:', error);
+        const itemsTable = document.getElementById(`items-${saleId}`);
+        if (itemsTable) {
+            itemsTable.innerHTML = '<tr><td colspan="5" style="text-align:center;color:red;">خطأ في تحميل العناصر: ' + error.message + '</td></tr>';
+        }
+    }
 }
 
 function filterSales(searchValue) {

@@ -13,7 +13,7 @@ TABLES = {
 
         -- Insert default admin user
         INSERT INTO users (username, password, permissions)
-        VALUES ('admin', 'admin123', 'home,sales,items,categories,companies,reports,item_movement,settings')
+        VALUES ('admin', 'admin123', 'home,sales,items,categories,companies,reports,item_movement,settings,activity_logs,shifts,invoices,traders,delivery,closing,employees')
     END
 """,
     'sections': """

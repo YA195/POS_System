@@ -85,9 +85,47 @@ def save_settings():
 def get_users():
     """Get all users."""
     try:
-        users = User.get_all()
-        return jsonify({'success': True, 'users': users})
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, password, permissions FROM users")
+        users_data = cursor.fetchall()
+        
+        users = [{
+            'id': row[0],
+            'username': row[1],
+            'password': row[2],
+            'permissions': row[3]
+        } for row in users_data]
+        
+        return jsonify(users)
     except Exception as e:
+        print(f"Error getting users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@settings_bp.route('/get_user/<int:user_id>')
+@login_required
+@permission_required('settings')
+def get_user(user_id):
+    """Get a single user by ID."""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, password, permissions FROM users WHERE id = ?", [user_id])
+        user_data = cursor.fetchone()
+        
+        if user_data:
+            user = {
+                'id': user_data[0],
+                'username': user_data[1],
+                'password': user_data[2],
+                'permissions': user_data[3] or ''
+            }
+            return jsonify(user)
+        else:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+    except Exception as e:
+        print(f"Error getting user: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -172,15 +210,84 @@ def get_activity_logs():
     try:
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT * FROM activity_logs 
-            ORDER BY created_at DESC 
-            LIMIT 1000
-        """)
-        logs = cursor.fetchall()
         
+        # SQL Server uses TOP instead of LIMIT
+        cursor.execute("""
+            SELECT TOP 1000 
+                id, user_id, username, action_type, table_name, 
+                record_id, description, ip_address, created_at
+            FROM activity_logs 
+            ORDER BY created_at DESC
+        """)
+        
+        logs_data = cursor.fetchall()
+        
+        # Convert Row objects to lists for JSON serialization
+        logs = []
+        for log in logs_data:
+            logs.append({
+                'id': log[0],
+                'user_id': log[1],
+                'username': log[2] or 'Unknown',
+                'action_type': log[3] or '',
+                'table_name': log[4] or '',
+                'record_id': log[5],
+                'description': log[6] or '',
+                'ip_address': log[7] or '',
+                'created_at': log[8].isoformat() if log[8] else ''
+            })
+        
+        print(f"Loaded {len(logs)} activity logs")
         return jsonify({'success': True, 'logs': logs})
+        
     except Exception as e:
+        print(f"Error loading activity logs: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@settings_bp.route('/get_activity_stats')
+@login_required
+def get_activity_stats():
+    """Get activity statistics."""
+    try:
+        from datetime import datetime, timedelta
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Total logs count
+        cursor.execute("SELECT COUNT(*) FROM activity_logs")
+        total_logs = cursor.fetchone()[0]
+        
+        # Today's logs count
+        today = datetime.now().date()
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM activity_logs 
+            WHERE CAST(created_at AS DATE) = ?
+        """, [today])
+        today_logs = cursor.fetchone()[0]
+        
+        # Active users (users who performed actions today)
+        cursor.execute("""
+            SELECT COUNT(DISTINCT user_id) 
+            FROM activity_logs 
+            WHERE CAST(created_at AS DATE) = ?
+        """, [today])
+        active_users = cursor.fetchone()[0]
+        
+        return jsonify({
+            'success': True,
+            'total_logs': total_logs or 0,
+            'today_logs': today_logs or 0,
+            'active_users': active_users or 0
+        })
+        
+    except Exception as e:
+        print(f"Error loading activity stats: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

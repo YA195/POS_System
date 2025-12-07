@@ -104,7 +104,7 @@ async function handleLogin(event) {
 
         if (data.success) {
             submitButton.innerHTML = '<i class="fas fa-check"></i> تم التسجيل بنجاح';
-            window.location.replace(data.redirect_url); // Instead of window.location.href
+            window.location.replace(data.redirect); // Instead of window.location.href
         } else {
             throw new Error(data.error || 'خطأ في تسجيل الدخول');
         }

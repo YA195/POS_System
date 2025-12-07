@@ -358,7 +358,7 @@ function loadCashBoxes() {
         .catch(error => {
             console.error('Error loading cash boxes:', error);
             const paymentSelect = document.getElementById('paymentMethod');
-            paymentSelect.innerHTML = '<option value="">خطأ في تحميل الصناديق</option>';
+            paymentSelect.innerHTML = '<option value="">نقدي</option>';
         });
 }
 

@@ -7,7 +7,7 @@ class ShiftController:
     """Controller for shift-related business logic."""
     
     @staticmethod
-    def start_shift(user_id, opening_balance=0):
+    def start_shift(user_id, cashier_name, opening_balance=0):
         """Start a new shift."""
         # Check if there's already an active shift
         active_shift = Shift.get_active()
@@ -15,10 +15,10 @@ class ShiftController:
             raise ValueError("There is already an active shift. Please close it before starting a new one.")
         
         # Create new shift
-        shift_id = Shift.create(user_id, opening_balance)
+        shift_id = Shift.create(user_id, cashier_name, opening_balance)
         
         # Log activity
-        log_activity('START_SHIFT', f"Started shift with opening balance: {opening_balance}", 'shifts', shift_id)
+        log_activity('START_SHIFT', f"Started shift for {cashier_name}", 'shifts', shift_id)
         
         return shift_id
     

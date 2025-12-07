@@ -13,20 +13,24 @@ class Item:
         
         if include_deleted:
             cursor.execute("""
-                SELECT i.*, c.category_name, co.company_name, s.section_name
+                SELECT i.id, i.barcode, i.name, i.category_id, i.buy_price, i.sell_price, 
+                       i.quantity, i.trader_id, i.active, i.barcode2, 
+                       c.name as category_name, t.name as trader_name
                 FROM items i
                 LEFT JOIN categories c ON i.category_id = c.id
-                LEFT JOIN companies co ON i.company_id = co.id
-                LEFT JOIN sections s ON i.section_id = s.id
+                LEFT JOIN traders t ON i.trader_id = t.id
+                ORDER BY i.id DESC
             """)
         else:
             cursor.execute("""
-                SELECT i.*, c.category_name, co.company_name, s.section_name
+                SELECT i.id, i.barcode, i.name, i.category_id, i.buy_price, i.sell_price, 
+                       i.quantity, i.trader_id, i.active, i.barcode2,
+                       c.name as category_name, t.name as trader_name
                 FROM items i
                 LEFT JOIN categories c ON i.category_id = c.id
-                LEFT JOIN companies co ON i.company_id = co.id
-                LEFT JOIN sections s ON i.section_id = s.id
-                WHERE i.is_deleted = 0
+                LEFT JOIN traders t ON i.trader_id = t.id
+                WHERE ISNULL(i.active, 1) = 1
+                ORDER BY i.id DESC
             """)
         
         return cursor.fetchall()
@@ -41,12 +45,12 @@ class Item:
     
     @staticmethod
     def get_by_barcode(barcode):
-        """Get item by barcode."""
+        """Get item by barcode or barcode2."""
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute("""
             SELECT * FROM items 
-            WHERE barcode = ? OR additional_barcodes LIKE ?
+            WHERE barcode = ? OR barcode2 LIKE ?
         """, [barcode, f'%{barcode}%'])
         return cursor.fetchone()
     
@@ -57,17 +61,24 @@ class Item:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO items (
-                barcode, item_name, category_id, company_id, section_id,
-                quantity, cost_price, selling_price, quick_sale
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-            SELECT SCOPE_IDENTITY() AS id
+                barcode, name, category_id, trader_id, barcode2,
+                quantity, buy_price, sell_price, active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
         """, [
-            data['barcode'], data['item_name'], data.get('category_id'),
-            data.get('company_id'), data.get('section_id'), data.get('quantity', 0),
-            data['cost_price'], data['selling_price'], data.get('quick_sale', 0)
+            data.get('barcode'),
+            data.get('name') or data.get('item_name'),
+            data.get('category_id'),
+            data.get('trader_id') or data.get('company_id'),
+            data.get('barcode2', ''),
+            data.get('quantity', 0),
+            data.get('buy_price') or data.get('cost_price'),
+            data.get('sell_price') or data.get('selling_price')
         ])
-        result = cursor.fetchone()
         conn.commit()
+        
+        # Get the last inserted ID
+        cursor.execute("SELECT @@IDENTITY AS id")
+        result = cursor.fetchone()
         return int(result[0]) if result else None
     
     @staticmethod
@@ -77,14 +88,18 @@ class Item:
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE items SET
-                barcode = ?, item_name = ?, category_id = ?, company_id = ?,
-                section_id = ?, quantity = ?, cost_price = ?, selling_price = ?,
-                quick_sale = ?
+                barcode = ?, name = ?, category_id = ?, trader_id = ?,
+                barcode2 = ?, quantity = ?, buy_price = ?, sell_price = ?
             WHERE id = ?
         """, [
-            data['barcode'], data['item_name'], data.get('category_id'),
-            data.get('company_id'), data.get('section_id'), data['quantity'],
-            data['cost_price'], data['selling_price'], data.get('quick_sale', 0),
+            data.get('barcode'),
+            data.get('name') or data.get('item_name'),
+            data.get('category_id'),
+            data.get('trader_id') or data.get('company_id'),
+            data.get('barcode2', ''),
+            data.get('quantity', 0),
+            data.get('buy_price') or data.get('cost_price'),
+            data.get('sell_price') or data.get('selling_price'),
             item_id
         ])
         conn.commit()
@@ -97,7 +112,7 @@ class Item:
         cursor = conn.cursor()
         
         if soft_delete:
-            cursor.execute("UPDATE items SET is_deleted = 1 WHERE id = ?", [item_id])
+            cursor.execute("UPDATE items SET active = 0 WHERE id = ?", [item_id])
         else:
             cursor.execute("DELETE FROM items WHERE id = ?", [item_id])
         
@@ -109,7 +124,7 @@ class Item:
         """Restore a soft-deleted item."""
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("UPDATE items SET is_deleted = 0 WHERE id = ?", [item_id])
+        cursor.execute("UPDATE items SET active = 1 WHERE id = ?", [item_id])
         conn.commit()
         return cursor.rowcount
     
@@ -121,7 +136,7 @@ class Item:
         search_term = f'%{term}%'
         cursor.execute("""
             SELECT * FROM items 
-            WHERE (item_name LIKE ? OR barcode LIKE ?)
-            AND is_deleted = 0
+            WHERE (name LIKE ? OR barcode LIKE ?)
+            AND ISNULL(active, 1) = 1
         """, [search_term, search_term])
         return cursor.fetchall()
