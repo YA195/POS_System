@@ -1,74 +1,41 @@
 """Category model."""
-from database.db import get_db
+from repositories.category_repository import CategoryRepository
 
 
 class Category:
     """Model for managing product categories."""
     
-    @staticmethod
-    def get_all(include_deleted=False):
+    def __init__(self):
+        """Initialize with repository."""
+        self.repository = CategoryRepository()
+    
+    def get_all(self, include_deleted=False):
         """Get all categories from database."""
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        if include_deleted:
-            cursor.execute("SELECT * FROM categories")
-        else:
-            cursor.execute("SELECT * FROM categories WHERE is_deleted = 0")
-        
-        return cursor.fetchall()
+        return self.repository.get_all(include_deleted)
     
-    @staticmethod
-    def get_by_id(category_id):
+    def get_by_id(self, category_id):
         """Get category by ID."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM categories WHERE id = ?", [category_id])
-        return cursor.fetchone()
+        return self.repository.get_by_id(category_id)
     
-    @staticmethod
-    def create(data):
+    def get_by_name(self, name):
+        """Get category by name."""
+        return self.repository.get_by_name(name)
+    
+    def create(self, data):
         """Create a new category."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO categories (category_name)
-            VALUES (?);
-            SELECT SCOPE_IDENTITY() AS id
-        """, [data['category_name']])
-        result = cursor.fetchone()
-        conn.commit()
-        return int(result[0]) if result else None
+        return self.repository.create(data['category_name'])
     
-    @staticmethod
-    def update(category_id, data):
+    def update(self, category_id, data):
         """Update an existing category."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE categories SET category_name = ? WHERE id = ?
-        """, [data['category_name'], category_id])
-        conn.commit()
-        return cursor.rowcount
+        return self.repository.update(category_id, data['category_name'])
     
-    @staticmethod
-    def delete(category_id, soft_delete=True):
+    def delete(self, category_id, soft_delete=True):
         """Delete a category (soft or hard delete)."""
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        if soft_delete:
-            cursor.execute("UPDATE categories SET is_deleted = 1 WHERE id = ?", [category_id])
-        else:
-            cursor.execute("DELETE FROM categories WHERE id = ?", [category_id])
-        
-        conn.commit()
-        return cursor.rowcount
+        return self.repository.delete(category_id, soft_delete)
     
-    @staticmethod
-    def restore(category_id):
+    def restore(self, category_id):
         """Restore a soft-deleted category."""
-        conn = get_db()
+        conn = self.repository.get_connection()
         cursor = conn.cursor()
         cursor.execute("UPDATE categories SET is_deleted = 0 WHERE id = ?", [category_id])
         conn.commit()

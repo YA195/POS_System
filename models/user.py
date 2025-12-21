@@ -1,85 +1,42 @@
 """User model."""
-from database.db import get_db
+from repositories.user_repository import UserRepository
 
 
 class User:
     """Model for managing system users."""
     
-    @staticmethod
-    def get_all():
+    def __init__(self):
+        """Initialize with repository."""
+        self.repository = UserRepository()
+    
+    def get_all(self):
         """Get all users."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, username, permissions FROM users")
-        return cursor.fetchall()
+        return self.repository.get_all()
     
-    @staticmethod
-    def get_by_id(user_id):
+    def get_by_id(self, user_id):
         """Get user by ID."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, username, permissions FROM users WHERE id = ?", [user_id])
-        return cursor.fetchone()
+        return self.repository.get_by_id(user_id)
     
-    @staticmethod
-    def get_by_username(username):
+    def get_by_username(self, username):
         """Get user by username."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ?", [username])
-        return cursor.fetchone()
+        return self.repository.get_by_username(username)
     
-    @staticmethod
-    def authenticate(username, password):
+    def authenticate(self, username, password):
         """Authenticate user with username and password."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, username, permissions 
-            FROM users 
-            WHERE username = ? AND password = ?
-        """, [username, password])
-        return cursor.fetchone()
+        return self.repository.authenticate(username, password)
     
-    @staticmethod
-    def create(data):
+    def create(self, data):
         """Create a new user."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO users (username, password, permissions)
-            VALUES (?, ?, ?);
-            SELECT SCOPE_IDENTITY() AS id
-        """, [data['username'], data['password'], data.get('permissions', '')])
-        result = cursor.fetchone()
-        conn.commit()
-        return int(result[0]) if result else None
+        return self.repository.create(data)
     
-    @staticmethod
-    def update(user_id, data):
+    def update(self, user_id, data):
         """Update an existing user."""
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        if 'password' in data and data['password']:
-            cursor.execute("""
-                UPDATE users SET username = ?, password = ?, permissions = ?
-                WHERE id = ?
-            """, [data['username'], data['password'], data.get('permissions', ''), user_id])
-        else:
-            cursor.execute("""
-                UPDATE users SET username = ?, permissions = ?
-                WHERE id = ?
-            """, [data['username'], data.get('permissions', ''), user_id])
-        
-        conn.commit()
-        return cursor.rowcount
+        return self.repository.update(user_id, data)
     
-    @staticmethod
-    def delete(user_id):
+    def delete(self, user_id):
         """Delete a user."""
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM users WHERE id = ?", [user_id])
-        conn.commit()
-        return cursor.rowcount
+        return self.repository.delete(user_id)
+    
+    def update_permissions(self, user_id, permissions):
+        """Update user permissions."""
+        return self.repository.update_permissions(user_id, permissions)
